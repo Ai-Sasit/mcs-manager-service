@@ -119,7 +119,10 @@
               <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
             </div>
             <div class="log-box" ref="logBox">
-              <div v-for="(line, i) in logLines" :key="i" class="log-line">
+              <div
+                v-for="(line, i) in logLines"
+                :key="i"
+                :class="['log-line', logLineClass(line)]">
                 {{ line }}
               </div>
               <div v-if="logLines.length === 0" class="log-empty">
@@ -137,7 +140,10 @@
         <el-tab-pane label="Terminal" name="terminal">
           <div class="tab-content">
             <div class="log-box" ref="termBox">
-              <div v-for="(line, i) in termLines" :key="i" class="log-line">
+              <div
+                v-for="(line, i) in termLines"
+                :key="i"
+                :class="['log-line', logLineClass(line)]">
                 {{ line }}
               </div>
               <div v-if="termLines.length === 0" class="log-empty">
@@ -523,6 +529,15 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
+function logLineClass(line) {
+  if (line.includes("[SYSTEM/INFO]")) return "log-system-info";
+  if (line.includes("[SYSTEM/WARN]")) return "log-system-warn";
+  if (line.includes("[SYSTEM/ERROR]")) return "log-system-error";
+  if (/\[WARN\]|\bWARNING\b/i.test(line)) return "log-warn";
+  if (/\[ERROR\]|\bERROR\b|\bFATAL\b/i.test(line)) return "log-error";
+  return "";
+}
+
 onMounted(async () => {
   await loadServer();
   if (server.value) {
@@ -628,6 +643,29 @@ onUnmounted(() => {
 .log-line {
   color: var(--color-text);
   margin-bottom: 2px;
+}
+
+.log-system-info {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.log-system-warn {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.log-system-error {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.log-warn {
+  color: #f59e0b;
+}
+
+.log-error {
+  color: #ef4444;
 }
 
 .log-empty {

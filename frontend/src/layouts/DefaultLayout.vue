@@ -95,6 +95,13 @@
             <span>Audit Logs</span>
           </router-link>
           <router-link
+            to="/backend-logs"
+            class="nav-item"
+            :class="{ active: route.name === 'backend-logs' }">
+            <el-icon size="18"><Document /></el-icon>
+            <span>Backend Logs</span>
+          </router-link>
+          <router-link
             to="/users"
             class="nav-item"
             :class="{ active: route.name === 'users' }">
@@ -170,6 +177,7 @@ import {
   Connection,
   Link,
   DocumentCopy,
+  Document,
   User,
   Setting,
   SwitchButton,
@@ -195,6 +203,7 @@ const pageTitle = computed(() => {
     plugins: "Plugins",
     integrations: "Integrations",
     "audit-logs": "Audit Logs",
+    "backend-logs": "Backend Logs",
     users: "Users",
     firewall: "Firewall",
     settings: "Settings",

@@ -74,6 +74,11 @@ export default {
   updateUser: (id, data) => api.put(`/users/${encodeURIComponent(id)}`, data),
   deleteUser: (id) => api.delete(`/users/${encodeURIComponent(id)}`),
 
+  // Backend logs
+  listBackendLogFiles: () => api.get("/backend-logs"),
+  getBackendLogFile: (file, tail = 500) =>
+    api.get(`/backend-logs/file?file=${encodeURIComponent(file)}&tail=${tail}`),
+
   // UFW Firewall
   getUfwStatus: () => api.get("/ufw/status"),
   getUfwRules: () => api.get("/ufw/rules"),

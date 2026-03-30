@@ -218,6 +218,8 @@ func (s *AppState) StartServer(id string) error {
 
 	dir := srv.ServerDir
 	logger.Info(fmt.Sprintf("[StartServer] Starting id=%s edition=%s", id, srv.Edition), nil)
+	s.getLogBrokerLocked(id).Publish(fmt.Sprintf("[%s] [SYSTEM/INFO] Starting %s server (edition=%s, version=%s)...",
+		time.Now().Format("15:04:05"), srv.Name, srv.Edition, srv.Version))
 
 	var cmd *exec.Cmd
 	switch srv.Edition {
@@ -253,6 +255,7 @@ func (s *AppState) StartServer(id string) error {
 	if err := cmd.Start(); err != nil {
 		s.mu.Unlock()
 		logger.Error("[StartServer] Process failed to start id="+id+": "+err.Error(), nil)
+		s.publishLog(id, "ERROR", "Failed to start process: "+err.Error())
 		return fmt.Errorf("failed to start: %w", err)
 	}
 
@@ -263,14 +266,17 @@ func (s *AppState) StartServer(id string) error {
 	}
 	s.mu.Unlock()
 	logger.Info("[StartServer] Process started id="+id, nil)
+	s.publishLog(id, "INFO", "Process started. Waiting for server to be ready...")
 
 	// Watch for process exit in a goroutine
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
 			logger.Warn(fmt.Sprintf("[StartServer] Process exited id=%s: %s", id, err.Error()), nil)
+			s.publishLog(id, "WARN", "Server process exited unexpectedly: "+err.Error())
 		} else {
 			logger.Info("[StartServer] Process exited cleanly id="+id, nil)
+			s.publishLog(id, "INFO", "Server process stopped.")
 		}
 
 		s.mu.Lock()
@@ -304,6 +310,7 @@ func (s *AppState) StopServer(id string) error {
 		// Try graceful shutdown first: send "stop" command
 		if hasStdin {
 			logger.Info("[StopServer] Sending graceful stop command id="+id, nil)
+			s.publishLog(id, "INFO", "Sending stop command to server...")
 			fmt.Fprintln(stdin, "stop")
 		}
 
@@ -313,11 +320,14 @@ func (s *AppState) StopServer(id string) error {
 		select {
 		case <-done:
 			logger.Info("[StopServer] Process exited gracefully id="+id, nil)
+			s.publishLog(id, "INFO", "Server stopped gracefully.")
 		case <-time.After(5 * time.Second):
 			logger.Warn("[StopServer] Graceful timeout, force killing id="+id, nil)
+			s.publishLog(id, "WARN", "Graceful stop timed out — force killing process.")
 			cmd.Process.Kill()
 			<-done
 			logger.Info("[StopServer] Process force killed id="+id, nil)
+			s.publishLog(id, "WARN", "Process force killed.")
 		}
 	} else {
 		logger.Info("[StopServer] No running process id="+id, nil)
@@ -343,9 +353,11 @@ func (s *AppState) StopServer(id string) error {
 
 func (s *AppState) RestartServer(id string) error {
 	logger.Info("[RestartServer] Stopping id="+id, nil)
+	s.publishLog(id, "INFO", "Restart requested — stopping server...")
 	s.StopServer(id)
 	time.Sleep(2 * time.Second)
 	logger.Info("[RestartServer] Restarting id="+id, nil)
+	s.publishLog(id, "INFO", "Restarting server now...")
 	return s.StartServer(id)
 }
 
@@ -380,6 +392,17 @@ func (s *AppState) GetLogBroker(id string) *LogBroker {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.getLogBrokerLocked(id)
+}
+
+// publishLog writes a timestamped [SYSTEM] line into a server's log broker
+// so it appears in the frontend live log alongside the Minecraft output.
+func (s *AppState) publishLog(id, level, msg string) {
+	ts := time.Now().Format("15:04:05")
+	line := fmt.Sprintf("[%s] [SYSTEM/%s] %s", ts, level, msg)
+	s.mu.Lock()
+	broker := s.getLogBrokerLocked(id)
+	s.mu.Unlock()
+	broker.Publish(line)
 }
 
 func (s *AppState) SendCommand(id string, cmd string) error {

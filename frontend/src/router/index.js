@@ -12,6 +12,7 @@ import SettingsView from "../views/SettingsView.vue";
 import AuditLogsView from "../views/AuditLogsView.vue";
 import UsersView from "../views/UsersView.vue";
 import FirewallView from "../views/FirewallView.vue";
+import BackendLogsView from "../views/BackendLogsView.vue";
 import LoginView from "../views/LoginView.vue";
 import PlaceholderView from "../views/PlaceholderView.vue";
 
@@ -40,6 +41,7 @@ const routes = [
   { path: "/audit-logs", name: "audit-logs", component: AuditLogsView },
   { path: "/users", name: "users", component: UsersView },
   { path: "/firewall", name: "firewall", component: FirewallView },
+  { path: "/backend-logs", name: "backend-logs", component: BackendLogsView },
   { path: "/settings", name: "settings", component: SettingsView },
 ];
 
