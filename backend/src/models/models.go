@@ -24,6 +24,7 @@ type ServerConfig struct {
 	MaxPlayers uint32        `json:"max_players"`
 	MemoryMB   uint32        `json:"memory_mb"`
 	Status     ServerStatus  `json:"status"`
+	Pid        int           `json:"pid,omitempty"`
 	CreatedAt  string        `json:"created_at"`
 	ServerDir  string        `json:"server_dir"`
 }

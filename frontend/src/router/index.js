@@ -14,6 +14,7 @@ import UsersView from "../views/UsersView.vue";
 import FirewallView from "../views/FirewallView.vue";
 import BackendLogsView from "../views/BackendLogsView.vue";
 import LoginView from "../views/LoginView.vue";
+import PortMonitorView from "../views/PortMonitorView.vue";
 import PlaceholderView from "../views/PlaceholderView.vue";
 
 const routes = [
@@ -42,6 +43,7 @@ const routes = [
   { path: "/users", name: "users", component: UsersView },
   { path: "/firewall", name: "firewall", component: FirewallView },
   { path: "/backend-logs", name: "backend-logs", component: BackendLogsView },
+  { path: "/port-monitor", name: "port-monitor", component: PortMonitorView },
   { path: "/settings", name: "settings", component: SettingsView },
 ];
 

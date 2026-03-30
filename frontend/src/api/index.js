@@ -14,6 +14,7 @@ export default {
   startServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/start`),
   stopServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/stop`),
   restartServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/restart`),
+  killServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/kill`),
 
   listPlugins: (id) => api.get(`/servers/${encodeURIComponent(id)}/plugins`),
   uploadPlugin: (id, formData) =>

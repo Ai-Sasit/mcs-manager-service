@@ -48,6 +48,15 @@
           Restart
         </el-button>
         <el-button
+          v-if="server.status !== 'stopped'"
+          type="danger"
+          plain
+          :loading="loading"
+          :icon="CircleClose"
+          @click="kill">
+          Kill
+        </el-button>
+        <el-button
           type="danger"
           :loading="loading"
           :icon="Delete"
@@ -284,6 +293,7 @@ import {
   Delete,
   Loading,
   CircleCheck,
+  CircleClose,
   Remove,
 } from "@element-plus/icons-vue";
 import api from "../api";
@@ -456,6 +466,32 @@ async function restart() {
     ElMessage.success("Server restarted.");
   } catch (e) {
     ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function kill() {
+  try {
+    await ElMessageBox.confirm(
+      "Force kill the server process? This may result in data loss as the server will not save its state.",
+      "Force Kill",
+      {
+        confirmButtonText: "Kill Process",
+        cancelButtonText: "Cancel",
+        type: "error",
+      }
+    );
+    loading.value = true;
+    await api.killServer(server.value.id);
+    server.value.status = "stopped";
+    logsComp?.disconnect();
+    termComp?.disconnect();
+    ElMessage.success("Process terminated.");
+  } catch (e) {
+    if (e !== "cancel") {
+      ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+    }
   } finally {
     loading.value = false;
   }

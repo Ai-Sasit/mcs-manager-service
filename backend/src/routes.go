@@ -51,6 +51,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	api.Post("/servers/:id/start", controllers.StartServer)
 	api.Post("/servers/:id/stop", controllers.StopServer)
 	api.Post("/servers/:id/restart", controllers.RestartServer)
+	api.Post("/servers/:id/kill", controllers.KillServer)
 
 	// Config
 	api.Get("/servers/:id/config", controllers.GetConfig)

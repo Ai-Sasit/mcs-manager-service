@@ -102,6 +102,13 @@
             <span>Backend Logs</span>
           </router-link>
           <router-link
+            to="/port-monitor"
+            class="nav-item"
+            :class="{ active: route.name === 'port-monitor' }">
+            <el-icon size="18"><Odometer /></el-icon>
+            <span>Port Monitor</span>
+          </router-link>
+          <router-link
             to="/users"
             class="nav-item"
             :class="{ active: route.name === 'users' }">
@@ -204,6 +211,7 @@ const pageTitle = computed(() => {
     integrations: "Integrations",
     "audit-logs": "Audit Logs",
     "backend-logs": "Backend Logs",
+    "port-monitor": "Port Monitor",
     users: "Users",
     firewall: "Firewall",
     settings: "Settings",

@@ -111,15 +111,27 @@ func (s *AppState) GetServer(id string) (*models.ServerConfig, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	srv, ok := s.Servers[id]
-	return srv, ok
+	if !ok {
+		return nil, false
+	}
+	// Return a copy with PID
+	copy := *srv
+	if cmd, ok := s.processes[id]; ok && cmd.Process != nil {
+		copy.Pid = cmd.Process.Pid
+	}
+	return &copy, true
 }
 
 func (s *AppState) ListServers() []*models.ServerConfig {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	list := make([]*models.ServerConfig, 0, len(s.Servers))
-	for _, srv := range s.Servers {
-		list = append(list, srv)
+	for id, srv := range s.Servers {
+		copy := *srv
+		if cmd, ok := s.processes[id]; ok && cmd.Process != nil {
+			copy.Pid = cmd.Process.Pid
+		}
+		list = append(list, &copy)
 	}
 	return list
 }
@@ -358,4 +370,36 @@ func (s *AppState) SendCommand(id string, cmd string) error {
 		return fmt.Errorf("failed to send command: server may be shutting down")
 	}
 	return err
+}
+
+func (s *AppState) KillServer(id string) error {
+	s.mu.Lock()
+	cmd, hasProcess := s.processes[id]
+	srv := s.Servers[id]
+	s.mu.Unlock()
+
+	if hasProcess && cmd.Process != nil {
+		logger.Warn("[KillServer] Force killing process id="+id, nil)
+		s.publishLog(id, "WARN", "Force killing server process...")
+		cmd.Process.Kill()
+	} else {
+		logger.Info("[KillServer] No running process id="+id, nil)
+	}
+
+	// Clean up resources
+	s.mu.Lock()
+	if current, ok := s.processes[id]; ok && current == cmd {
+		delete(s.processes, id)
+	}
+	if pipe, ok := s.stdinPipes[id]; ok {
+		pipe.Close()
+		delete(s.stdinPipes, id)
+	}
+	if srv != nil {
+		srv.Status = models.StatusStopped
+	}
+	s.mu.Unlock()
+
+	s.Save()
+	return nil
 }

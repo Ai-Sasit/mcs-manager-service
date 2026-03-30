@@ -150,6 +150,22 @@ func RestartServer(c fiber.Ctx) error {
 	})
 }
 
+// KillServer force stops a server process
+func KillServer(c fiber.Ctx) error {
+	id := c.Params("id")
+	logger.Info("[KillServer] id="+id, nil)
+	if err := state.KillServer(id); err != nil {
+		logger.Error("[KillServer] Failed id="+id+": "+err.Error(), nil)
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusInternalServerError)
+	}
+	logger.Info("[KillServer] Killed id="+id, nil)
+	utils.LogAudit("admin", "KILL_SERVER", id, "Force killed server process.")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Killed",
+	})
+}
+
 // ListJavaVersions returns available Java edition versions
 func ListJavaVersions(c fiber.Ctx) error {
 	logger.Info("[ListJavaVersions] Fetching from Mojang", nil)
