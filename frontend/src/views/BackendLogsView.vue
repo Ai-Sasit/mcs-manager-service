@@ -27,6 +27,11 @@
       </div>
 
       <div class="toolbar-right">
+        <el-switch
+          v-model="isLive"
+          active-text="Live Logs"
+          inactive-text=""
+          @change="toggleLive" />
         <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
         <el-button @click="loadLines" :loading="loading">
           <el-icon><Refresh /></el-icon>
@@ -50,6 +55,9 @@
       </span>
       <span class="stat-sep" v-if="selectedFile">·</span>
       <span class="stat">{{ selectedFile }}</span>
+      <el-tag v-if="isLive" type="danger" size="small" effect="dark" class="live-tag">
+        LIVE
+      </el-tag>
     </div>
 
     <!-- Log box -->
@@ -81,10 +89,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Refresh, Delete } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import api from "../api";
+import { WS_BASE_URL } from "../constants";
 
 const files = ref([]);
 const selectedFile = ref("");
@@ -93,6 +102,8 @@ const search = ref("");
 const lines = ref([]);
 const loading = ref(false);
 const autoScroll = ref(true);
+const isLive = ref(false);
+const socket = ref(null);
 const logBox = ref(null);
 
 // When filter is active line numbers start from 0 in the filtered set;
@@ -128,6 +139,8 @@ async function loadFiles() {
 
 async function loadLines() {
   if (!selectedFile.value) return;
+  // If we're toggling file but live is on, maybe we should stop live?
+  // Or just allow it. For now, we'll let it fetch the file.
   loading.value = true;
   try {
     const { data } = await api.getBackendLogFile(
@@ -135,11 +148,7 @@ async function loadLines() {
       tailCount.value,
     );
     lines.value = data.data || [];
-    if (autoScroll.value) {
-      nextTick(() => {
-        if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
-      });
-    }
+    scrollToBottom();
   } catch {
     ElMessage.error("Failed to load log file");
     lines.value = [];
@@ -148,20 +157,73 @@ async function loadLines() {
   }
 }
 
-function clearView() {
-  lines.value = [];
-}
-
-// Auto-scroll when filteredLines changes and autoScroll is on
-watch(filteredLines, () => {
+function scrollToBottom() {
   if (autoScroll.value) {
     nextTick(() => {
       if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
     });
   }
-});
+}
+
+function toggleLive() {
+  if (isLive.value) {
+    connectLive();
+  } else {
+    disconnectLive();
+  }
+}
+
+function connectLive() {
+  const token = localStorage.getItem("mc_token");
+  if (!token) {
+    ElMessage.error("Session expired. Please login again.");
+    isLive.value = false;
+    return;
+  }
+
+  const url = `${WS_BASE_URL}/ws/backend-logs?token=${token}`;
+  socket.value = new WebSocket(url);
+
+  socket.value.onopen = () => {
+    ElMessage.success("Connected to live logs");
+  };
+
+  socket.value.onmessage = (event) => {
+    lines.value.push(event.data);
+    if (lines.value.length > tailCount.value) {
+      lines.value.shift();
+    }
+    scrollToBottom();
+  };
+
+  socket.value.onclose = () => {
+    isLive.value = false;
+    socket.value = null;
+  };
+
+  socket.value.onerror = (err) => {
+    console.error("WebSocket error:", err);
+    ElMessage.error("Live log connection error");
+    isLive.value = false;
+  };
+}
+
+function disconnectLive() {
+  if (socket.value) {
+    socket.value.close();
+    socket.value = null;
+  }
+}
+
+function clearView() {
+  lines.value = [];
+}
+
+// Auto-scroll when filteredLines changes and autoScroll is on
+watch(filteredLines, scrollToBottom);
 
 onMounted(loadFiles);
+onUnmounted(disconnectLive);
 </script>
 
 <style scoped>
@@ -205,6 +267,17 @@ onMounted(loadFiles);
 
 .stat-sep {
   color: var(--el-border-color);
+}
+
+.live-tag {
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 /* ─── Log card / box ─── */

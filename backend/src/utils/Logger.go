@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,68 @@ type Logger struct {
 	filename string
 	logDir   string
 }
+
+// LogBroker fans out lines to multiple WebSocket subscribers
+type LogBroker struct {
+	mu          sync.Mutex
+	subscribers map[chan string]struct{}
+	history     []string
+}
+
+func NewLogBroker() *LogBroker {
+	return &LogBroker{
+		subscribers: make(map[chan string]struct{}),
+	}
+}
+
+func (b *LogBroker) Subscribe() chan string {
+	ch := make(chan string, 256)
+	b.mu.Lock()
+	for _, line := range b.history {
+		select {
+		case ch <- line:
+		default:
+		}
+	}
+	b.subscribers[ch] = struct{}{}
+	b.mu.Unlock()
+	return ch
+}
+
+func (b *LogBroker) Unsubscribe(ch chan string) {
+	b.mu.Lock()
+	if _, ok := b.subscribers[ch]; ok {
+		delete(b.subscribers, ch)
+		close(ch)
+	}
+	b.mu.Unlock()
+}
+
+func (b *LogBroker) Publish(line string) {
+	b.mu.Lock()
+	b.history = append(b.history, line)
+	if len(b.history) > 500 {
+		b.history = b.history[1:]
+	}
+	for ch := range b.subscribers {
+		select {
+		case ch <- line:
+		default:
+		}
+	}
+	b.mu.Unlock()
+}
+
+func (b *LogBroker) Close() {
+	b.mu.Lock()
+	for ch := range b.subscribers {
+		close(ch)
+		delete(b.subscribers, ch)
+	}
+	b.mu.Unlock()
+}
+
+var BackendLogBroker = NewLogBroker()
 
 func NewLogger(filename string) *Logger {
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
@@ -81,6 +144,7 @@ func (l *Logger) Log(level string, ctx interface{}, meta LogMeta) {
 	}
 	log.Println("\033[37m[" + l.now() + "]\033[0m " + logMsg)
 	l.write(l.now()+" "+logMsg, meta)
+	BackendLogBroker.Publish("[" + l.now() + "] " + logMsg)
 }
 
 func (l *Logger) Info(message string, meta LogMeta) {

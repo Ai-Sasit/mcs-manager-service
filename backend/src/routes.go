@@ -34,6 +34,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	// WebSocket routes (plain Fiber v3 handlers, upgrade handled inside)
 	app.Get("/ws/servers/:id/logs", controllers.WsLogs)
 	app.Get("/ws/servers/:id/terminal", controllers.WsTerminal)
+	app.Get("/ws/backend-logs", controllers.WsBackendLogs)
 
 	// Protected API routes
 	api := app.Group("/api", middleware.AuthRequired)

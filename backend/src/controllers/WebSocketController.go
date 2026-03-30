@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"mc-manage-backend/src/utils"
 	"strings"
 
 	ws "github.com/fasthttp/websocket"
@@ -108,6 +109,51 @@ func WsTerminal(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsTerminal] Upgrade failed server="+id+": "+err.Error(), nil)
+		return err
+	}
+	return nil
+}
+
+// WsBackendLogs streams internal backend logs to a WebSocket client
+func WsBackendLogs(c fiber.Ctx) error {
+	logger.Info("[WsBackendLogs] Client connected", nil)
+
+	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+		defer conn.Close()
+
+		ch := utils.BackendLogBroker.Subscribe()
+		defer func() {
+			utils.BackendLogBroker.Unsubscribe(ch)
+			logger.Info("[WsBackendLogs] Client disconnected", nil)
+		}()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					return
+				}
+			}
+		}()
+
+		for {
+			select {
+			case line, ok := <-ch:
+				if !ok {
+					return
+				}
+				if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	})
+
+	if err != nil {
+		logger.Error("[WsBackendLogs] Upgrade failed: "+err.Error(), nil)
 		return err
 	}
 	return nil

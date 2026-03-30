@@ -18,69 +18,9 @@ import (
 
 var logger = utils.NewLogger("mc-manage")
 
-// LogBroker fans out lines to multiple WebSocket subscribers
-type LogBroker struct {
-	mu          sync.Mutex
-	subscribers map[chan string]struct{}
-	history     []string
-}
-
-func newLogBroker() *LogBroker {
-	return &LogBroker{
-		subscribers: make(map[chan string]struct{}),
-	}
-}
-
-func (b *LogBroker) Subscribe() chan string {
-	ch := make(chan string, 256)
-	b.mu.Lock()
-	for _, line := range b.history {
-		select {
-		case ch <- line:
-		default:
-		}
-	}
-	b.subscribers[ch] = struct{}{}
-	b.mu.Unlock()
-	return ch
-}
-
-func (b *LogBroker) Unsubscribe(ch chan string) {
-	b.mu.Lock()
-	if _, ok := b.subscribers[ch]; ok {
-		delete(b.subscribers, ch)
-		close(ch)
-	}
-	b.mu.Unlock()
-}
-
-func (b *LogBroker) Publish(line string) {
-	b.mu.Lock()
-	b.history = append(b.history, line)
-	if len(b.history) > 500 {
-		b.history = b.history[1:]
-	}
-	for ch := range b.subscribers {
-		select {
-		case ch <- line:
-		default:
-		}
-	}
-	b.mu.Unlock()
-}
-
-func (b *LogBroker) Close() {
-	b.mu.Lock()
-	for ch := range b.subscribers {
-		close(ch)
-		delete(b.subscribers, ch)
-	}
-	b.mu.Unlock()
-}
-
 // logWriter implements io.Writer and publishes lines to a LogBroker
 type logWriter struct {
-	broker *LogBroker
+	broker *utils.LogBroker
 	buf    []byte
 	mu     sync.Mutex
 }
@@ -108,7 +48,7 @@ type AppState struct {
 	Servers     map[string]*models.ServerConfig
 	processes   map[string]*exec.Cmd
 	stdinPipes  map[string]io.WriteCloser
-	logBrokers  map[string]*LogBroker
+	logBrokers  map[string]*utils.LogBroker
 	Scheduler   *SchedulerService
 	UserService *UserService
 	DataDir     string
@@ -124,7 +64,7 @@ func NewAppState() *AppState {
 		Servers:    make(map[string]*models.ServerConfig),
 		processes:  make(map[string]*exec.Cmd),
 		stdinPipes: make(map[string]io.WriteCloser),
-		logBrokers: make(map[string]*LogBroker),
+		logBrokers: make(map[string]*utils.LogBroker),
 		DataDir:    dataDir,
 	}
 
@@ -381,14 +321,14 @@ func (s *AppState) StopAllServers() {
 	logger.Info("[StopAllServers] Done", nil)
 }
 
-func (s *AppState) getLogBrokerLocked(id string) *LogBroker {
+func (s *AppState) getLogBrokerLocked(id string) *utils.LogBroker {
 	if _, ok := s.logBrokers[id]; !ok {
-		s.logBrokers[id] = newLogBroker()
+		s.logBrokers[id] = utils.NewLogBroker()
 	}
 	return s.logBrokers[id]
 }
 
-func (s *AppState) GetLogBroker(id string) *LogBroker {
+func (s *AppState) GetLogBroker(id string) *utils.LogBroker {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.getLogBrokerLocked(id)
