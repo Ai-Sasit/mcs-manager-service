@@ -38,3 +38,10 @@ type PluginInfo struct {
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 }
+
+type ProcessInfo struct {
+	Pid      int    `json:"pid"`
+	Name     string `json:"name"`
+	Port     int    `json:"port"`
+	Protocol string `json:"protocol"`
+}

@@ -6,6 +6,19 @@
         <p class="page-subtitle">Manage OS processes and network ports for your fleet.</p>
       </div>
       <div class="header-actions">
+        <el-input
+          v-model="searchPortInput"
+          placeholder="Lookup Port (e.g. 25565)"
+          class="lookup-input"
+          :prefix-icon="Search"
+          round
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button :icon="Search" @click="handleSearch" :loading="searchLoading">Lookup</el-button>
+          </template>
+        </el-input>
         <el-button round :icon="Refresh" @click="refresh" :loading="loading">Refresh</el-button>
       </div>
     </div>
@@ -37,6 +50,47 @@
         </div>
         <div class="stat-main">
           <div class="stat-value">TCP/UDP</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Lookup Result -->
+    <div v-if="searchResult || searchError" class="search-result-container anim-slide-down">
+      <el-alert
+        v-if="searchError"
+        :title="searchError"
+        type="error"
+        show-icon
+        closable
+        @close="searchError = ''"
+        class="glass-card"
+      />
+      <div v-else-if="searchResult" class="found-process-card glass-card">
+        <div class="result-header">
+          <div class="result-title">
+            <el-icon class="pulse-icon"><Target /></el-icon>
+            <span>Process Found on Port {{ searchResult.port }}</span>
+          </div>
+          <el-button link :icon="Close" @click="searchResult = null" />
+        </div>
+        <div class="result-body">
+          <div class="process-meta">
+            <div class="meta-item">
+              <span class="label">Process Name</span>
+              <span class="value">{{ searchResult.name }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="label">PID</span>
+              <code class="pid-badge primary">{{ searchResult.pid }}</code>
+            </div>
+            <div class="meta-item">
+              <span class="label">Protocol</span>
+              <span class="value">{{ searchResult.protocol }}</span>
+            </div>
+          </div>
+          <el-button type="danger" round :icon="CircleClose" @click="handleKillPid(searchResult.pid)">
+            Terminate Process
+          </el-button>
         </div>
       </div>
     </div>
@@ -111,7 +165,8 @@
 import { ref, onMounted, computed } from "vue";
 import { 
   Refresh, Connection, Cpu, Odometer, 
-  More, View, CircleClose 
+  More, View, CircleClose, Search,
+  Target, Close
 } from "@element-plus/icons-vue";
 import { useServersStore } from "../stores/servers";
 import { ElMessageBox, ElMessage } from "element-plus";
@@ -119,6 +174,10 @@ import api from "../api";
 
 const store = useServersStore();
 const loading = ref(false);
+const searchPortInput = ref("");
+const searchLoading = ref(false);
+const searchResult = ref(null);
+const searchError = ref("");
 
 const listeningCount = computed(() => store.runningCount);
 const activePidCount = computed(() => store.servers.filter(s => !!s.pid).length);
@@ -127,6 +186,48 @@ async function refresh() {
   loading.value = true;
   await store.fetchServers();
   loading.value = false;
+}
+
+async function handleSearch() {
+  if (!searchPortInput.value) return;
+  searchLoading.value = true;
+  searchError.value = "";
+  searchResult.value = null;
+  try {
+    const res = await api.lookupPort(searchPortInput.value);
+    searchResult.value = res.data.data;
+  } catch (e) {
+    searchError.value = e.response?.data?.message || "No process found on this port.";
+  } finally {
+    searchLoading.value = false;
+  }
+}
+
+async function handleKillPid(pid) {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to force kill process ${pid}? This action cannot be undone.`,
+      "Force Kill System Process",
+      {
+        confirmButtonText: "Terminate",
+        cancelButtonText: "Cancel",
+        type: "warning",
+        confirmButtonClass: "el-button--danger"
+      }
+    );
+
+    loading.value = true;
+    await api.killPid(pid);
+    ElMessage.success(`Process ${pid} killed.`);
+    searchResult.value = null;
+    await store.fetchServers();
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.message || "Failed to kill process");
+    }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function handleKill(server) {
@@ -185,6 +286,18 @@ onMounted(() => {
   font-size: 15px;
 }
 
+.lookup-input {
+  width: 300px;
+  margin-right: 12px;
+}
+
+:deep(.lookup-input .el-input-group__append) {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  font-weight: 700;
+}
+
 /* Stats */
 .stats-grid {
   display: grid;
@@ -230,6 +343,91 @@ onMounted(() => {
 .stat-value {
   font-size: 32px;
   font-weight: 900;
+}
+
+/* Quick Lookup Result */
+.search-result-container {
+  margin-bottom: 32px;
+}
+
+.found-process-card {
+  padding: 20px 24px;
+  border-left: 4px solid var(--color-danger);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.result-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.pulse-icon {
+  color: var(--color-danger);
+  font-size: 20px;
+  animation: pulse-ring 2s infinite;
+}
+
+.result-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.process-meta {
+  display: flex;
+  gap: 40px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-item .label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.meta-item .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.pid-badge.primary {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-size: 14px;
+  padding: 4px 10px;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.anim-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Table Card */

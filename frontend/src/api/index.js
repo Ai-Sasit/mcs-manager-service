@@ -71,6 +71,8 @@ export default {
 
   // System
   getAuditLogs: () => api.get("/audit-logs"),
+  lookupPort: (port) => api.get(`/system/port-lookup?port=${port}`),
+  killPid: (pid) => api.post("/system/kill-pid", { pid }),
   getSettings: () => api.get("/settings"),
   updateSettings: (data) => api.put("/settings", data),
 

@@ -68,6 +68,8 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 
 	// System
 	api.Get("/system/info", controllers.GetSystemInfo)
+	api.Get("/system/port-lookup", controllers.LookupPort)
+	api.Post("/system/kill-pid", controllers.KillPid)
 	api.Get("/audit-logs", controllers.GetAuditLogs)
 	api.Get("/backend-logs", controllers.ListBackendLogFiles)
 	api.Get("/backend-logs/file", controllers.GetBackendLogFile)

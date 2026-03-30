@@ -114,3 +114,51 @@ func GetBackendLogFile(c fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"success": true, "data": lines})
 }
+
+// LookupPort finds a process by its listening port
+func LookupPort(c fiber.Ctx) error {
+	portStr := c.Query("port")
+	if portStr == "" {
+		return utils.ErrorResponse(c, "port query param required", fiber.StatusBadRequest)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return utils.ErrorResponse(c, "invalid port number", fiber.StatusBadRequest)
+	}
+
+	info, err := utils.LookupProcessByPort(port)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusNotFound)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    info,
+		"message": "OK",
+	})
+}
+
+// KillPid force kills a process by PID
+func KillPid(c fiber.Ctx) error {
+	var req struct {
+		Pid int `json:"pid"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return utils.ErrorResponse(c, "invalid request body", fiber.StatusBadRequest)
+	}
+
+	if req.Pid <= 0 {
+		return utils.ErrorResponse(c, "invalid PID", fiber.StatusBadRequest)
+	}
+
+	if err := utils.KillProcessByPid(req.Pid); err != nil {
+		return utils.ErrorResponse(c, "failed to kill process: "+err.Error(), fiber.StatusInternalServerError)
+	}
+
+	utils.LogAudit("admin", "SYSTEM_KILL_PID", strconv.Itoa(req.Pid), "Force killed system process.")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Process terminated",
+	})
+}
