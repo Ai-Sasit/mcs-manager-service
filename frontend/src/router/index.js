@@ -10,6 +10,8 @@ import SchedulesView from "../views/SchedulesView.vue";
 import PluginsView from "../views/PluginsView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import AuditLogsView from "../views/AuditLogsView.vue";
+import UsersView from "../views/UsersView.vue";
+import FirewallView from "../views/FirewallView.vue";
 import LoginView from "../views/LoginView.vue";
 import PlaceholderView from "../views/PlaceholderView.vue";
 
@@ -29,9 +31,15 @@ const routes = [
   { path: "/backups", name: "backups", component: BackupsView },
   { path: "/schedules", name: "schedules", component: SchedulesView },
   { path: "/plugins", name: "plugins", component: PluginsView },
-  { path: "/integrations", name: "integrations", component: PlaceholderView, props: { title: "Integrations" } },
+  {
+    path: "/integrations",
+    name: "integrations",
+    component: PlaceholderView,
+    props: { title: "Integrations" },
+  },
   { path: "/audit-logs", name: "audit-logs", component: AuditLogsView },
-  { path: "/users", name: "users", component: PlaceholderView, props: { title: "Users" } },
+  { path: "/users", name: "users", component: UsersView },
+  { path: "/firewall", name: "firewall", component: FirewallView },
   { path: "/settings", name: "settings", component: SettingsView },
 ];
 

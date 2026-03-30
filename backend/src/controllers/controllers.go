@@ -42,9 +42,10 @@ func CreateServer(c fiber.Ctx) error {
 	logger.Info(fmt.Sprintf("[CreateServer] name=%s edition=%s version=%s", req.Name, req.Edition, req.Version), nil)
 
 	params := services.CreateServerParams{
-		Name:    req.Name,
-		Edition: req.Edition,
-		Version: req.Version,
+		Name:       req.Name,
+		Edition:    req.Edition,
+		ServerType: req.ServerType,
+		Version:    req.Version,
 	}
 	if req.Port != nil {
 		params.Port = *req.Port
@@ -149,7 +150,6 @@ func RestartServer(c fiber.Ctx) error {
 	})
 }
 
-
 // ListJavaVersions returns available Java edition versions
 func ListJavaVersions(c fiber.Ctx) error {
 	logger.Info("[ListJavaVersions] Fetching from Mojang", nil)
@@ -175,7 +175,85 @@ func ListBedrockVersions(c fiber.Ctx) error {
 		Message: "OK",
 	})
 }
+
 // ListUsers returns all users
 func ListUsers(c fiber.Ctx) error {
-	return c.JSON(interfaces.ApiResponse{Success: true, Data: []string{}, Message: "Not implemented yet"})
+	users := state.UserService.ListUsers()
+	return c.JSON(interfaces.ApiResponse{Success: true, Data: users, Message: "OK"})
+}
+
+// CreateUser creates a new user
+func CreateUser(c fiber.Ctx) error {
+	role, _ := c.Locals("role").(string)
+	if role != "admin" {
+		return utils.ErrorResponse(c, "Only admins can manage users", fiber.StatusForbidden)
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
+	}
+	if req.Username == "" || req.Password == "" {
+		return utils.ErrorResponse(c, "Username and password are required", fiber.StatusBadRequest)
+	}
+	if len(req.Password) < 4 {
+		return utils.ErrorResponse(c, "Password must be at least 4 characters", fiber.StatusBadRequest)
+	}
+
+	user, err := state.UserService.CreateUser(req.Username, req.Password, req.Role)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	utils.LogAudit(c.Locals("username").(string), "CREATE_USER", req.Username, "Created new user account.")
+	return c.JSON(interfaces.ApiResponse{Success: true, Data: user, Message: "User created"})
+}
+
+// UpdateUser updates an existing user
+func UpdateUser(c fiber.Ctx) error {
+	callerRole, _ := c.Locals("role").(string)
+	if callerRole != "admin" {
+		return utils.ErrorResponse(c, "Only admins can manage users", fiber.StatusForbidden)
+	}
+
+	id := c.Params("id")
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
+	}
+
+	user, err := state.UserService.UpdateUser(id, req.Username, req.Password, req.Role)
+	if err != nil {
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	utils.LogAudit(c.Locals("username").(string), "UPDATE_USER", user.Username, "Updated user account.")
+	return c.JSON(interfaces.ApiResponse{Success: true, Data: user, Message: "User updated"})
+}
+
+// DeleteUser deletes a user
+func DeleteUser(c fiber.Ctx) error {
+	callerRole, _ := c.Locals("role").(string)
+	if callerRole != "admin" {
+		return utils.ErrorResponse(c, "Only admins can manage users", fiber.StatusForbidden)
+	}
+
+	id := c.Params("id")
+	if err := state.UserService.DeleteUser(id); err != nil {
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	utils.LogAudit(c.Locals("username").(string), "DELETE_USER", id, "Deleted user account.")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "User deleted",
+	})
 }

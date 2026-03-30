@@ -5,6 +5,7 @@ import "mc-manage-backend/src/models"
 type CreateServerRequest struct {
 	Name       string               `json:"name"`
 	Edition    models.ServerEdition `json:"edition"`
+	ServerType string               `json:"server_type"`
 	Version    string               `json:"version"`
 	Port       *uint16              `json:"port,omitempty"`
 	MaxPlayers *uint32              `json:"max_players,omitempty"`

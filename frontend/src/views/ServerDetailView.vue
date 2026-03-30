@@ -3,13 +3,20 @@
     <!-- Header -->
     <div class="detail-header card">
       <div class="header-left">
-        <el-button text size="small" :icon="ArrowLeft" @click="$router.push('/')">
+        <el-button
+          text
+          size="small"
+          :icon="ArrowLeft"
+          @click="$router.push('/')">
           Back
         </el-button>
         <div class="server-info">
           <h2 class="server-name">{{ server.name }}</h2>
           <div class="meta-row">
-            <el-tag size="small" :type="server.status === 'running' ? 'success' : 'info'" effect="light">
+            <el-tag
+              size="small"
+              :type="server.status === 'running' ? 'success' : 'info'"
+              effect="light">
               {{ server.status }}
             </el-tag>
             <span class="meta-text">v{{ server.version }}</span>
@@ -28,31 +35,23 @@
           type="primary"
           :loading="loading"
           :icon="VideoPlay"
-          @click="start"
-        >
+          @click="start">
           Start
         </el-button>
-        <el-button 
-          v-else 
-          :loading="loading" 
-          :icon="VideoPause"
-          @click="stop"
-        >
+        <el-button v-else :loading="loading" :icon="VideoPause" @click="stop">
           Stop
         </el-button>
         <el-button
           :disabled="loading || server.status === 'stopped'"
           :icon="RefreshRight"
-          @click="restart"
-        >
+          @click="restart">
           Restart
         </el-button>
-        <el-button 
-          type="danger" 
-          :loading="loading" 
+        <el-button
+          type="danger"
+          :loading="loading"
           :icon="Delete"
-          @click="confirmDelete"
-        >
+          @click="confirmDelete">
           Delete
         </el-button>
       </div>
@@ -70,16 +69,39 @@
               </el-descriptions-item>
               <el-descriptions-item label="Edition">
                 <span class="edition-badge" :class="server.edition">
-                  {{ server.edition === 'java' ? 'Java Edition' : 'Bedrock Edition' }}
+                  {{
+                    server.edition === "java"
+                      ? "Java Edition"
+                      : "Bedrock Edition"
+                  }}
                 </span>
               </el-descriptions-item>
-              <el-descriptions-item label="Version">{{ server.version }}</el-descriptions-item>
-              <el-descriptions-item label="Port">{{ server.port }}</el-descriptions-item>
-              <el-descriptions-item label="Max Players">{{ server.max_players }}</el-descriptions-item>
-              <el-descriptions-item label="Memory" v-if="server.edition === 'java'">
+              <el-descriptions-item
+                label="Server Type"
+                v-if="server.edition === 'java'">
+                {{
+                  { vanilla: "Vanilla", paper: "Paper", spigot: "Spigot" }[
+                    server.server_type
+                  ] || "Vanilla"
+                }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Version">{{
+                server.version
+              }}</el-descriptions-item>
+              <el-descriptions-item label="Port">{{
+                server.port
+              }}</el-descriptions-item>
+              <el-descriptions-item label="Max Players">{{
+                server.max_players
+              }}</el-descriptions-item>
+              <el-descriptions-item
+                label="Memory"
+                v-if="server.edition === 'java'">
                 {{ server.memory_mb }} MB
               </el-descriptions-item>
-              <el-descriptions-item label="Created">{{ formatDate(server.created_at) }}</el-descriptions-item>
+              <el-descriptions-item label="Created">{{
+                formatDate(server.created_at)
+              }}</el-descriptions-item>
               <el-descriptions-item label="Path">
                 <code class="path-code">{{ server.server_dir }}</code>
               </el-descriptions-item>
@@ -91,13 +113,21 @@
         <el-tab-pane label="Live Logs" name="logs">
           <div class="tab-content">
             <div class="tab-toolbar">
-              <el-button size="small" :icon="Remove" @click="clearLogs">Clear Logs</el-button>
+              <el-button size="small" :icon="Remove" @click="clearLogs"
+                >Clear Logs</el-button
+              >
               <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
             </div>
             <div class="log-box" ref="logBox">
-              <div v-for="(line, i) in logLines" :key="i" class="log-line">{{ line }}</div>
+              <div v-for="(line, i) in logLines" :key="i" class="log-line">
+                {{ line }}
+              </div>
               <div v-if="logLines.length === 0" class="log-empty">
-                {{ server.status === 'running' ? 'Waiting for log stream...' : 'Start the instance to view logs.' }}
+                {{
+                  server.status === "running"
+                    ? "Waiting for log stream..."
+                    : "Start the instance to view logs."
+                }}
               </div>
             </div>
           </div>
@@ -107,9 +137,15 @@
         <el-tab-pane label="Terminal" name="terminal">
           <div class="tab-content">
             <div class="log-box" ref="termBox">
-              <div v-for="(line, i) in termLines" :key="i" class="log-line">{{ line }}</div>
+              <div v-for="(line, i) in termLines" :key="i" class="log-line">
+                {{ line }}
+              </div>
               <div v-if="termLines.length === 0" class="log-empty">
-                {{ server.status === 'running' ? 'Connection established. Waiting for input...' : 'Start the server to use the terminal.' }}
+                {{
+                  server.status === "running"
+                    ? "Connection established. Waiting for input..."
+                    : "Start the server to use the terminal."
+                }}
               </div>
             </div>
             <div class="cmd-row">
@@ -117,15 +153,13 @@
                 v-model="cmdInput"
                 placeholder="Enter server command..."
                 :disabled="server.status !== 'running'"
-                @keyup.enter="sendCommand"
-              >
+                @keyup.enter="sendCommand">
                 <template #prepend><span class="cmd-prompt">/</span></template>
               </el-input>
-              <el-button 
-                type="primary" 
-                :disabled="server.status !== 'running'" 
-                @click="sendCommand"
-              >
+              <el-button
+                type="primary"
+                :disabled="server.status !== 'running'"
+                @click="sendCommand">
                 Execute
               </el-button>
             </div>
@@ -144,12 +178,25 @@
             </div>
             <div v-else>
               <div class="config-toolbar">
-                <el-input v-model="configSearch" placeholder="Search keys..." clearable style="width:300px" size="small" />
-                <el-button type="primary" size="small" :loading="configSaving" :icon="CircleCheck" @click="saveConfig">
-                  Save Changes
-                </el-button>
+                <el-input
+                  v-model="configSearch"
+                  placeholder="Search keys..."
+                  clearable
+                  style="width: 300px"
+                  size="small" />
+                <div style="display: flex; gap: 8px">
+                  <el-button size="small" @click="loadConfig">Reload</el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    :loading="configSaving"
+                    :icon="CircleCheck"
+                    @click="saveConfig">
+                    Save Changes
+                  </el-button>
+                </div>
               </div>
-              <el-table :data="filteredConfig" style="width:100%" size="small">
+              <el-table :data="filteredConfig" style="width: 100%" size="small">
                 <el-table-column prop="key" label="Property" width="300" />
                 <el-table-column label="Value">
                   <template #default="{ row }">
@@ -169,24 +216,32 @@
               :edition="server.edition"
               @uploaded="loadPlugins" />
 
-            <el-table :data="plugins" style="width:100%;margin-top:20px" size="small" v-if="plugins.length > 0">
+            <el-table
+              :data="plugins"
+              style="width: 100%; margin-top: 20px"
+              size="small"
+              v-if="plugins.length > 0">
               <el-table-column label="File Name" prop="name" />
               <el-table-column label="File Size" width="120">
-                <template #default="{ row }">{{ formatSize(row.size) }}</template>
+                <template #default="{ row }">{{
+                  formatSize(row.size)
+                }}</template>
               </el-table-column>
               <el-table-column label="Action" width="80" align="center">
                 <template #default="{ row }">
-                  <el-button 
-                    type="danger" 
+                  <el-button
+                    type="danger"
                     circle
                     size="small"
-                    :icon="Delete" 
-                    @click="removePlugin(row.name)"
-                  />
+                    :icon="Delete"
+                    @click="removePlugin(row.name)" />
                 </template>
               </el-table-column>
             </el-table>
-            <el-empty v-else description="No plugins installed." :image-size="80" />
+            <el-empty
+              v-else
+              description="No plugins installed."
+              :image-size="80" />
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -199,9 +254,14 @@
   </div>
 
   <div v-else class="center-info full-page">
-    <el-result icon="error" title="Instance Not Found" sub-title="The requested server instance does not exist or has been deleted.">
+    <el-result
+      icon="error"
+      title="Instance Not Found"
+      sub-title="The requested server instance does not exist or has been deleted.">
       <template #extra>
-        <el-button type="primary" :icon="ArrowLeft" @click="$router.push('/')">Return Home</el-button>
+        <el-button type="primary" :icon="ArrowLeft" @click="$router.push('/')"
+          >Return Home</el-button
+        >
       </template>
     </el-result>
   </div>
@@ -211,8 +271,14 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  ArrowLeft, VideoPlay, VideoPause, RefreshRight,
-  Delete, Loading, CircleCheck, Remove
+  ArrowLeft,
+  VideoPlay,
+  VideoPause,
+  RefreshRight,
+  Delete,
+  Loading,
+  CircleCheck,
+  Remove,
 } from "@element-plus/icons-vue";
 import api from "../api";
 import { useServerLogs } from "../composables/useServerLogs";
@@ -279,7 +345,10 @@ async function loadConfig() {
   try {
     const { data } = await api.getConfig(server.value.id);
     const map = data.data || {};
-    configRows.value = Object.entries(map).map(([key, value]) => ({ key, value }));
+    configRows.value = Object.entries(map).map(([key, value]) => ({
+      key,
+      value,
+    }));
   } catch (e) {
     configError.value = e.response?.data?.message || "Failed to load config";
   } finally {
@@ -290,9 +359,11 @@ async function loadConfig() {
 async function saveConfig() {
   configSaving.value = true;
   try {
-    const map = Object.fromEntries(configRows.value.map((r) => [r.key, r.value]));
+    const map = Object.fromEntries(
+      configRows.value.map((r) => [r.key, r.value]),
+    );
     await api.updateConfig(server.value.id, map);
-    ElMessage.success({ message: "Configuration updated.", type: 'success' });
+    ElMessage.success({ message: "Configuration updated.", type: "success" });
   } catch (e) {
     ElMessage.error(e.response?.data?.message || "Failed to save config");
   } finally {
@@ -343,8 +414,6 @@ async function start() {
   try {
     await api.startServer(server.value.id);
     server.value.status = "running";
-    setupLogs();
-    setupTerminal();
     ElMessage.success("Server start sequence initiated.");
   } catch (e) {
     ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
@@ -358,6 +427,8 @@ async function stop() {
   try {
     await api.stopServer(server.value.id);
     server.value.status = "stopped";
+    logsComp?.disconnect();
+    termComp?.disconnect();
     ElMessage.info("Server stopped.");
   } catch (e) {
     ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
@@ -370,8 +441,12 @@ async function restart() {
   loading.value = true;
   server.value.status = "starting";
   try {
+    logsComp?.disconnect();
+    termComp?.disconnect();
     await api.restartServer(server.value.id);
     server.value.status = "running";
+    setupLogs();
+    setupTerminal();
     ElMessage.success("Server restarted.");
   } catch (e) {
     ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
@@ -385,11 +460,11 @@ async function confirmDelete() {
     await ElMessageBox.confirm(
       `Are you sure you want to delete "${server.value.name}"? This action cannot be undone.`,
       "Warning",
-      { 
-        confirmButtonText: "Yes, Delete Forever", 
-        cancelButtonText: "Cancel", 
+      {
+        confirmButtonText: "Yes, Delete Forever",
+        cancelButtonText: "Cancel",
         type: "warning",
-        confirmButtonClass: 'el-button--danger'
+        confirmButtonClass: "el-button--danger",
       },
     );
     loading.value = true;
@@ -407,7 +482,9 @@ async function confirmDelete() {
 async function removePlugin(name) {
   try {
     await ElMessageBox.confirm(`Remove this plugin/addon?`, "Confirm", {
-      confirmButtonText: "Remove", cancelButtonText: "Cancel", type: "warning",
+      confirmButtonText: "Remove",
+      cancelButtonText: "Cancel",
+      type: "warning",
     });
     await api.deletePlugin(server.value.id, name);
     ElMessage.success("Plugin removed successfully.");
@@ -420,6 +497,20 @@ async function removePlugin(name) {
 watch(activeTab, (tab) => {
   if (tab === "config") loadConfig();
 });
+
+watch(
+  () => server.value?.status,
+  (newStatus, oldStatus) => {
+    if (!server.value) return;
+    if (newStatus === "running" && oldStatus !== "running") {
+      setupLogs();
+      setupTerminal();
+    } else if (newStatus === "stopped" && oldStatus === "running") {
+      logsComp?.disconnect();
+      termComp?.disconnect();
+    }
+  },
+);
 
 function formatDate(iso) {
   if (!iso) return "-";
@@ -528,7 +619,7 @@ onUnmounted(() => {
   padding: 20px;
   height: 480px;
   overflow-y: auto;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.7;
   border: 1px solid var(--color-border);
@@ -609,7 +700,11 @@ onUnmounted(() => {
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

@@ -3,8 +3,12 @@ import { WS_BASE_URL } from "../constants";
 export function useServerLogs(serverId) {
   let ws = null;
   const listeners = new Set();
+  let shouldReconnect = false;
+  let reconnectTimer = null;
 
   function connect() {
+    disconnect();
+    shouldReconnect = true;
     const token = localStorage.getItem("mc_token") || "";
     const url = `${WS_BASE_URL}/ws/servers/${encodeURIComponent(serverId)}/logs?token=${encodeURIComponent(token)}`;
     ws = new WebSocket(url);
@@ -13,8 +17,13 @@ export function useServerLogs(serverId) {
       listeners.forEach((cb) => cb(event.data));
     };
 
+    ws.onerror = () => {};
+
     ws.onclose = () => {
       ws = null;
+      if (shouldReconnect) {
+        reconnectTimer = setTimeout(() => connect(), 3000);
+      }
     };
   }
 
@@ -24,6 +33,11 @@ export function useServerLogs(serverId) {
   }
 
   function disconnect() {
+    shouldReconnect = false;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
     if (ws) {
       ws.close();
       ws = null;

@@ -18,6 +18,7 @@ type ServerConfig struct {
 	ID         string        `json:"id"`
 	Name       string        `json:"name"`
 	Edition    ServerEdition `json:"edition"`
+	ServerType string        `json:"server_type"`
 	Version    string        `json:"version"`
 	Port       uint16        `json:"port"`
 	MaxPlayers uint32        `json:"max_players"`

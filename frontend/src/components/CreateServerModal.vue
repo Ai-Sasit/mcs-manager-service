@@ -33,6 +33,45 @@
               </div>
             </div>
 
+            <div class="form-group" v-if="form.edition === 'java'">
+              <label>Server Type</label>
+              <div class="edition-selector">
+                <button
+                  type="button"
+                  class="edition-btn"
+                  :class="{ active: form.server_type === 'vanilla' }"
+                  @click="form.server_type = 'vanilla'">
+                  🟢
+                  <span>Vanilla</span>
+                </button>
+                <button
+                  type="button"
+                  class="edition-btn"
+                  :class="{ active: form.server_type === 'paper' }"
+                  @click="form.server_type = 'paper'">
+                  📄
+                  <span>Paper</span>
+                </button>
+                <button
+                  type="button"
+                  class="edition-btn"
+                  :class="{ active: form.server_type === 'spigot' }"
+                  @click="form.server_type = 'spigot'">
+                  🔧
+                  <span>Spigot</span>
+                </button>
+              </div>
+              <p class="type-hint" v-if="form.server_type === 'paper'">
+                Recommended for plugins. Best performance.
+              </p>
+              <p class="type-hint" v-else-if="form.server_type === 'spigot'">
+                Supports Bukkit/Spigot plugins.
+              </p>
+              <p class="type-hint" v-else>
+                Official Mojang server. No plugin support.
+              </p>
+            </div>
+
             <div class="form-group">
               <label>Version</label>
               <el-select
@@ -40,12 +79,13 @@
                 placeholder="Select version..."
                 :loading="loadingVersions"
                 size="large"
-                style="width: 100%"
-              >
+                style="width: 100%">
                 <el-option
                   v-for="v in versions"
                   :key="v.id"
-                  :label="form.edition === 'bedrock' ? `Latest (${v.id})` : v.id"
+                  :label="
+                    form.edition === 'bedrock' ? `Latest (${v.id})` : v.id
+                  "
                   :value="v.id" />
               </el-select>
             </div>
@@ -56,8 +96,7 @@
                 v-model="form.name"
                 placeholder="production-server-1"
                 maxlength="50"
-                size="large"
-              />
+                size="large" />
             </div>
 
             <div class="form-row">
@@ -69,8 +108,7 @@
                   :max="65535"
                   controls-position="right"
                   size="large"
-                  style="width: 100%"
-                />
+                  style="width: 100%" />
               </div>
               <div class="form-group">
                 <label>Max Players</label>
@@ -80,8 +118,7 @@
                   :max="1000"
                   controls-position="right"
                   size="large"
-                  style="width: 100%"
-                />
+                  style="width: 100%" />
               </div>
             </div>
 
@@ -93,8 +130,7 @@
                 :step="256"
                 controls-position="right"
                 size="large"
-                style="width: 100%"
-              />
+                style="width: 100%" />
             </div>
 
             <el-alert
@@ -102,16 +138,14 @@
               :title="error"
               type="error"
               show-icon
-              :closable="false"
-            />
+              :closable="false" />
 
             <el-button
               type="primary"
               size="large"
               class="submit-btn"
               :loading="creating"
-              native-type="submit"
-            >
+              native-type="submit">
               {{ creating ? "Deploying..." : "Deploy Server" }}
             </el-button>
           </form>
@@ -137,6 +171,7 @@ const emit = defineEmits(["close", "created"]);
 const form = ref({
   name: "",
   edition: "java",
+  server_type: "paper",
   version: "",
   port: DEFAULT_JAVA_PORT,
   max_players: DEFAULT_MAX_PLAYERS,
@@ -173,6 +208,7 @@ function setEdition(edition) {
   form.value.edition = edition;
   form.value.port =
     edition === "java" ? DEFAULT_JAVA_PORT : DEFAULT_BEDROCK_PORT;
+  form.value.server_type = edition === "java" ? "paper" : "";
   fetchVersions();
 }
 
@@ -224,8 +260,14 @@ onMounted(fetchVersions);
 }
 
 @keyframes modalIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-header {
@@ -317,6 +359,12 @@ label {
   border-color: var(--color-primary);
   background: rgba(16, 185, 129, 0.04);
   color: var(--color-primary);
+}
+
+.type-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 2px 0 0;
 }
 
 .submit-btn {

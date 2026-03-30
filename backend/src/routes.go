@@ -15,6 +15,10 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	// Public auth
 	app.Post("/api/auth/login", controllers.Login)
 
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.SendString("V.1.0.0")
+	})
+
 	// WebSocket auth middleware (checks ?token= query param)
 	app.Use("/ws", func(c fiber.Ctx) error {
 		token := c.Query("token")
@@ -82,6 +86,17 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	api.Delete("/schedules/:id", controllers.DeleteSchedule)
 
 	api.Get("/users", controllers.ListUsers)
+	api.Post("/users", controllers.CreateUser)
+	api.Put("/users/:id", controllers.UpdateUser)
+	api.Delete("/users/:id", controllers.DeleteUser)
 	api.Get("/settings", controllers.GetSettings)
 	api.Put("/settings", controllers.UpdateSettings)
+
+	// UFW Firewall
+	api.Get("/ufw/status", controllers.GetUfwStatus)
+	api.Get("/ufw/rules", controllers.ListUfwRules)
+	api.Post("/ufw/allow", controllers.AllowUfwRule)
+	api.Post("/ufw/deny", controllers.DenyUfwRule)
+	api.Delete("/ufw/rules/:number", controllers.DeleteUfwRule)
+	api.Post("/ufw/toggle", controllers.ToggleUfw)
 }

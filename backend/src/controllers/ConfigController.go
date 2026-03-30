@@ -21,7 +21,19 @@ func GetConfig(c fiber.Ctx) error {
 	propPath := filepath.Join(srv.ServerDir, "server.properties")
 	data, err := os.ReadFile(propPath)
 	if err != nil {
-		return utils.ErrorResponse(c, "Config file not found", fiber.StatusNotFound)
+		// If file doesn't exist, create a default one and return it
+		if os.IsNotExist(err) {
+			defaultProps := "server-port=25565\nmax-players=20\nmotd=A Minecraft Server\n"
+			os.WriteFile(propPath, []byte(defaultProps), 0644)
+			config := parseProperties(defaultProps)
+			logger.Info("[GetConfig] Created default config for server="+id, nil)
+			return c.JSON(interfaces.ApiResponse{
+				Success: true,
+				Data:    config,
+				Message: "OK",
+			})
+		}
+		return utils.ErrorResponse(c, "Failed to read config file", fiber.StatusInternalServerError)
 	}
 
 	config := parseProperties(string(data))

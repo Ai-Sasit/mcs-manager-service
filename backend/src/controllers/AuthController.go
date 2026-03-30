@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"mc-manage-backend/src/utils"
-	"os"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -18,39 +17,34 @@ func Login(c fiber.Ctx) error {
 		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
 	}
 
-	adminUser := os.Getenv("ADMIN_USERNAME")
-	adminPass := os.Getenv("ADMIN_PASSWORD")
-	if adminUser == "" {
-		adminUser = "admin"
-	}
-	if adminPass == "" {
-		adminPass = "admin"
-	}
-
-	if req.Username != adminUser || req.Password != adminPass {
+	user, err := state.UserService.Authenticate(req.Username, req.Password)
+	if err != nil {
 		logger.Warn("[Login] Invalid credentials for: "+req.Username, nil)
 		return utils.ErrorResponse(c, "Invalid credentials", fiber.StatusUnauthorized)
 	}
 
-	token, err := utils.GenerateJWT(req.Username)
+	token, err := utils.GenerateJWT(user.Username, user.Role)
 	if err != nil {
 		logger.Error("[Login] Token generation failed: "+err.Error(), nil)
 		return utils.ErrorResponse(c, "Token generation failed", fiber.StatusInternalServerError)
 	}
 
-	logger.Info("[Login] User logged in: "+req.Username, nil)
+	logger.Info("[Login] User logged in: "+user.Username, nil)
 	return c.JSON(fiber.Map{
 		"success":  true,
 		"token":    token,
 		"message":  "Login successful",
-		"username": req.Username,
+		"username": user.Username,
+		"role":     user.Role,
 	})
 }
 
 func GetMe(c fiber.Ctx) error {
 	username, _ := c.Locals("username").(string)
+	role, _ := c.Locals("role").(string)
 	return c.JSON(fiber.Map{
 		"success":  true,
 		"username": username,
+		"role":     role,
 	})
 }

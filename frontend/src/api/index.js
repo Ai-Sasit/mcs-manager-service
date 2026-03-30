@@ -35,26 +35,50 @@ export default {
 
   // Files
   listFiles: (id, path) =>
-    api.get(`/servers/${encodeURIComponent(id)}/files?path=${encodeURIComponent(path || "")}`),
+    api.get(
+      `/servers/${encodeURIComponent(id)}/files?path=${encodeURIComponent(path || "")}`,
+    ),
   readFile: (id, path) =>
-    api.get(`/servers/${encodeURIComponent(id)}/files/read?path=${encodeURIComponent(path)}`),
+    api.get(
+      `/servers/${encodeURIComponent(id)}/files/read?path=${encodeURIComponent(path)}`,
+    ),
   writeFile: (id, path, content) =>
-    api.post(`/servers/${encodeURIComponent(id)}/files/write?path=${encodeURIComponent(path)}`, { content }),
+    api.post(
+      `/servers/${encodeURIComponent(id)}/files/write?path=${encodeURIComponent(path)}`,
+      { content },
+    ),
 
   // Backups
   listBackups: (id) => api.get(`/servers/${encodeURIComponent(id)}/backups`),
   createBackup: (id) => api.post(`/servers/${encodeURIComponent(id)}/backups`),
   deleteBackup: (id, name) =>
-    api.delete(`/servers/${encodeURIComponent(id)}/backups/${encodeURIComponent(name)}`),
+    api.delete(
+      `/servers/${encodeURIComponent(id)}/backups/${encodeURIComponent(name)}`,
+    ),
 
   // Schedules
   listSchedules: () => api.get("/schedules"),
   createSchedule: (data) => api.post("/schedules", data),
-  toggleSchedule: (id, enabled) => api.put(`/schedules/${encodeURIComponent(id)}/toggle`, { enabled }),
+  toggleSchedule: (id, enabled) =>
+    api.put(`/schedules/${encodeURIComponent(id)}/toggle`, { enabled }),
   deleteSchedule: (id) => api.delete(`/schedules/${encodeURIComponent(id)}`),
 
   // System
   getAuditLogs: () => api.get("/audit-logs"),
   getSettings: () => api.get("/settings"),
   updateSettings: (data) => api.put("/settings", data),
+
+  // Users
+  listUsers: () => api.get("/users"),
+  createUser: (data) => api.post("/users", data),
+  updateUser: (id, data) => api.put(`/users/${encodeURIComponent(id)}`, data),
+  deleteUser: (id) => api.delete(`/users/${encodeURIComponent(id)}`),
+
+  // UFW Firewall
+  getUfwStatus: () => api.get("/ufw/status"),
+  getUfwRules: () => api.get("/ufw/rules"),
+  allowUfwRule: (data) => api.post("/ufw/allow", data),
+  denyUfwRule: (data) => api.post("/ufw/deny", data),
+  deleteUfwRule: (number) => api.delete(`/ufw/rules/${number}`),
+  toggleUfw: (enabled) => api.post("/ufw/toggle", { enabled }),
 };

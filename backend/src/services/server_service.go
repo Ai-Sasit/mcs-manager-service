@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ import (
 type CreateServerParams struct {
 	Name       string
 	Edition    models.ServerEdition
+	ServerType string
 	Version    string
 	Port       uint16
 	MaxPlayers uint32
@@ -37,10 +39,21 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 
 	// Download server files
 	var err error
-	logger.Info(fmt.Sprintf("[CreateServer] Downloading %s server %s", params.Edition, params.Version), nil)
+	serverType := params.ServerType
+	if serverType == "" {
+		serverType = "vanilla"
+	}
+	logger.Info(fmt.Sprintf("[CreateServer] Downloading %s server %s type=%s", params.Edition, params.Version, serverType), nil)
 	switch params.Edition {
 	case models.EditionJava:
-		err = DownloadJavaServer(params.Version, serverDir)
+		switch serverType {
+		case "paper":
+			err = DownloadPaperServer(params.Version, serverDir)
+		case "spigot":
+			err = DownloadSpigotServer(params.Version, serverDir)
+		default:
+			err = DownloadJavaServer(params.Version, serverDir)
+		}
 	case models.EditionBedrock:
 		err = DownloadBedrockServer(params.Version, serverDir)
 	}
@@ -74,8 +87,24 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		memoryMB = constants.DefaultMemoryMB
 	}
 
-	props := fmt.Sprintf("server-port=%d\nmax-players=%d\nmotd=MC Manage Server\n", port, maxPlayers)
-	os.WriteFile(filepath.Join(serverDir, "server.properties"), []byte(props), 0644)
+	propPath := filepath.Join(serverDir, "server.properties")
+	if params.Edition == models.EditionBedrock {
+		// Bedrock: merge our settings into the extracted server.properties
+		if existing, err := os.ReadFile(propPath); err == nil {
+			merged := mergeProperties(string(existing), map[string]string{
+				"server-port": fmt.Sprintf("%d", port),
+				"max-players": fmt.Sprintf("%d", maxPlayers),
+			})
+			os.WriteFile(propPath, []byte(merged), 0644)
+		} else {
+			props := fmt.Sprintf("server-port=%d\nmax-players=%d\nmotd=MC Manage Server\n", port, maxPlayers)
+			os.WriteFile(propPath, []byte(props), 0644)
+		}
+	} else {
+		// Java: write a complete default server.properties
+		props := fmt.Sprintf("server-port=%d\nmax-players=%d\nmotd=MC Manage Server\nonline-mode=true\ndifficulty=easy\ngamemode=survival\nview-distance=10\n", port, maxPlayers)
+		os.WriteFile(propPath, []byte(props), 0644)
+	}
 
 	// Create plugins/addons dir
 	subDir := "plugins"
@@ -88,6 +117,7 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		ID:         id,
 		Name:       params.Name,
 		Edition:    params.Edition,
+		ServerType: serverType,
 		Version:    params.Version,
 		Port:       port,
 		MaxPlayers: maxPlayers,
@@ -287,6 +317,105 @@ func DownloadBedrockServer(version, dest string) error {
 	return utils.ExtractZip(data, dest)
 }
 
+// DownloadPaperServer downloads a Paper server jar for the given version
+func DownloadPaperServer(version, dest string) error {
+	logger.Info("[DownloadPaperServer] Fetching builds for version="+version, nil)
+
+	// Get latest build number
+	buildsURL := fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds", version)
+	resp, err := http.Get(buildsURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch Paper builds: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Paper API returned status %d for version %s", resp.StatusCode, version)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var buildsResp struct {
+		Builds []struct {
+			Build     int `json:"build"`
+			Downloads map[string]struct {
+				Name string `json:"name"`
+			} `json:"downloads"`
+		} `json:"builds"`
+	}
+	if err := json.Unmarshal(body, &buildsResp); err != nil {
+		return fmt.Errorf("failed to parse Paper builds: %w", err)
+	}
+
+	if len(buildsResp.Builds) == 0 {
+		return fmt.Errorf("no Paper builds found for version %s", version)
+	}
+
+	latestBuild := buildsResp.Builds[len(buildsResp.Builds)-1]
+	appDownload, ok := latestBuild.Downloads["application"]
+	if !ok {
+		return fmt.Errorf("no application download in Paper build")
+	}
+
+	jarURL := fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds/%d/downloads/%s",
+		version, latestBuild.Build, appDownload.Name)
+	logger.Info(fmt.Sprintf("[DownloadPaperServer] Downloading build %d for version=%s", latestBuild.Build, version), nil)
+
+	resp, err = http.Get(jarURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	jarData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Join(dest, "server.jar"), jarData, 0644)
+}
+
+// DownloadSpigotServer downloads a Spigot server jar for the given version
+func DownloadSpigotServer(version, dest string) error {
+	logger.Info("[DownloadSpigotServer] Downloading for version="+version, nil)
+
+	// Use GetBukkit mirror for Spigot jars
+	url := fmt.Sprintf("https://download.getbukkit.org/spigot/spigot-%s.jar", version)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download Spigot: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Fallback: try Paper API as Spigot mirror may not have all versions
+		logger.Warn(fmt.Sprintf("[DownloadSpigotServer] GetBukkit returned %d, falling back to Paper", resp.StatusCode), nil)
+		return DownloadPaperServer(version, dest)
+	}
+
+	jarData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Verify it looks like a JAR (ZIP magic bytes PK)
+	if len(jarData) < 4 || jarData[0] != 0x50 || jarData[1] != 0x4B {
+		logger.Warn("[DownloadSpigotServer] Downloaded file is not a valid JAR, falling back to Paper", nil)
+		return DownloadPaperServer(version, dest)
+	}
+
+	return os.WriteFile(filepath.Join(dest, "server.jar"), jarData, 0644)
+}
+
 // FetchJavaVersions fetches available Java edition versions from Mojang
 func FetchJavaVersions() ([]models.VersionInfo, error) {
 	resp, err := http.Get(constants.MojangVersionManifestURL)
@@ -379,7 +508,6 @@ type BedrockOSVersion struct {
 	Stable string `json:"stable"`
 }
 
-
 // Internal types for Mojang API
 
 type VersionManifest struct {
@@ -406,4 +534,37 @@ type DownloadEntry struct {
 
 func jsonUnmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
+}
+
+// mergeProperties merges override values into an existing properties file content
+func mergeProperties(content string, overrides map[string]string) string {
+	lines := strings.Split(content, "\n")
+	found := make(map[string]bool)
+	var result []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			result = append(result, line)
+			continue
+		}
+		if idx := strings.IndexByte(trimmed, '='); idx >= 0 {
+			key := strings.TrimSpace(trimmed[:idx])
+			if val, ok := overrides[key]; ok {
+				result = append(result, key+"="+val)
+				found[key] = true
+				continue
+			}
+		}
+		result = append(result, line)
+	}
+
+	// Append any overrides not found in the original
+	for key, val := range overrides {
+		if !found[key] {
+			result = append(result, key+"="+val)
+		}
+	}
+
+	return strings.Join(result, "\n")
 }

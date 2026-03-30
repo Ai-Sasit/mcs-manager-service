@@ -51,6 +51,9 @@
       <div class="login-footer">
         Secure Access Only
       </div>
+      <div class="desc-footer">
+        <p>Version 1.0.0</p>
+      </div>
     </div>
   </div>
 </template>
@@ -155,6 +158,12 @@ async function handleLogin() {
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+.desc-footer {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 :deep(.el-form-item__label) {

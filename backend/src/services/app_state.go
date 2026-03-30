@@ -104,13 +104,14 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 }
 
 type AppState struct {
-	mu         sync.RWMutex
-	Servers    map[string]*models.ServerConfig
-	processes  map[string]*exec.Cmd
-	stdinPipes map[string]io.WriteCloser
-	logBrokers map[string]*LogBroker
-	Scheduler  *SchedulerService
-	DataDir    string
+	mu          sync.RWMutex
+	Servers     map[string]*models.ServerConfig
+	processes   map[string]*exec.Cmd
+	stdinPipes  map[string]io.WriteCloser
+	logBrokers  map[string]*LogBroker
+	Scheduler   *SchedulerService
+	UserService *UserService
+	DataDir     string
 }
 
 func NewAppState() *AppState {
@@ -129,6 +130,7 @@ func NewAppState() *AppState {
 
 	state.loadServers()
 	state.Scheduler = NewSchedulerService(state)
+	state.UserService = NewUserService(dataDir)
 	return state
 }
 
@@ -294,25 +296,46 @@ func (s *AppState) StartServer(id string) error {
 func (s *AppState) StopServer(id string) error {
 	s.mu.Lock()
 	cmd, hasProcess := s.processes[id]
-	if hasProcess {
-		delete(s.processes, id)
-	}
-	if stdin, ok := s.stdinPipes[id]; ok {
-		stdin.Close()
-		delete(s.stdinPipes, id)
-	}
-	if srv, ok := s.Servers[id]; ok {
-		srv.Status = models.StatusStopped
-	}
+	stdin, hasStdin := s.stdinPipes[id]
+	srv := s.Servers[id]
 	s.mu.Unlock()
 
 	if hasProcess && cmd.Process != nil {
-		cmd.Process.Kill()
-		cmd.Wait()
-		logger.Info("[StopServer] Process killed id="+id, nil)
+		// Try graceful shutdown first: send "stop" command
+		if hasStdin {
+			logger.Info("[StopServer] Sending graceful stop command id="+id, nil)
+			fmt.Fprintln(stdin, "stop")
+		}
+
+		// Wait up to 5 seconds for graceful exit
+		done := make(chan error, 1)
+		go func() { done <- cmd.Wait() }()
+		select {
+		case <-done:
+			logger.Info("[StopServer] Process exited gracefully id="+id, nil)
+		case <-time.After(5 * time.Second):
+			logger.Warn("[StopServer] Graceful timeout, force killing id="+id, nil)
+			cmd.Process.Kill()
+			<-done
+			logger.Info("[StopServer] Process force killed id="+id, nil)
+		}
 	} else {
 		logger.Info("[StopServer] No running process id="+id, nil)
 	}
+
+	// Clean up resources
+	s.mu.Lock()
+	if s.processes[id] == cmd {
+		delete(s.processes, id)
+	}
+	if pipe, ok := s.stdinPipes[id]; ok {
+		pipe.Close()
+		delete(s.stdinPipes, id)
+	}
+	if srv != nil {
+		srv.Status = models.StatusStopped
+	}
+	s.mu.Unlock()
 
 	s.Save()
 	return nil
@@ -362,10 +385,14 @@ func (s *AppState) GetLogBroker(id string) *LogBroker {
 func (s *AppState) SendCommand(id string, cmd string) error {
 	s.mu.RLock()
 	stdin, ok := s.stdinPipes[id]
+	_, running := s.processes[id]
 	s.mu.RUnlock()
-	if !ok {
-		return fmt.Errorf("server not running or stdin not available")
+	if !ok || !running {
+		return fmt.Errorf("server is not running")
 	}
 	_, err := fmt.Fprintln(stdin, cmd)
+	if err != nil {
+		return fmt.Errorf("failed to send command: server may be shutting down")
+	}
 	return err
 }

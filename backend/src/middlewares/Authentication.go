@@ -24,7 +24,7 @@ func AuthRequired(c fiber.Ctx) error {
 		})
 	}
 
-	username, err := utils.ValidateJWT(parts[1])
+	claims, err := utils.ValidateJWT(parts[1])
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -32,6 +32,7 @@ func AuthRequired(c fiber.Ctx) error {
 		})
 	}
 
-	c.Locals("username", username)
+	c.Locals("username", claims.Username)
+	c.Locals("role", claims.Role)
 	return c.Next()
 }
