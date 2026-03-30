@@ -24,6 +24,11 @@ jobs:
         working-directory: frontend
         run: bun install
 
+      - name: Create .env file
+        working-directory: frontend
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+
       - name: Build
         working-directory: frontend
         run: bun run build
@@ -89,6 +94,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          envs: ADMIN_USERNAME,ADMIN_PASSWORD,JWT_SECRET,PORT,DEBUG_MODE
           script: |
             set -e
 
@@ -98,6 +104,16 @@ jobs:
 
             # Ensure install directory exists
             mkdir -p "$INSTALL_DIR"
+
+            # Write .env file
+            cat > "$INSTALL_DIR/.env" <<EOF
+            ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            PORT=${{ secrets.BACKEND_PORT || '8080' }}
+            DEBUG_MODE=${{ secrets.DEBUG_MODE || 'false' }}
+            EOF
+            chmod 600 "$INSTALL_DIR/.env"
 
             # Stop service before replacing binary
             systemctl stop "$SERVICE_NAME" || true
