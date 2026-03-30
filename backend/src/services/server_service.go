@@ -378,42 +378,39 @@ func DownloadPaperServer(version, dest string) error {
 	return os.WriteFile(filepath.Join(dest, "server.jar"), jarData, 0644)
 }
 
-// DownloadSpigotServer downloads a Spigot server jar for the given version
+// DownloadSpigotServer downloads a Spigot-compatible server jar for the given version.
+// It tries the GetBukkit mirror first and falls back to Paper (which is Spigot-compatible
+// and supports all Bukkit/Spigot plugins) on any error.
 func DownloadSpigotServer(version, dest string) error {
 	logger.Info("[DownloadSpigotServer] Downloading for version="+version, nil)
 
-	// Use GetBukkit mirror for Spigot jars
+	// Try GetBukkit mirror
 	url := fmt.Sprintf("https://download.getbukkit.org/spigot/spigot-%s.jar", version)
 	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to download Spigot: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Fallback: try Paper API as Spigot mirror may not have all versions
-		logger.Warn(fmt.Sprintf("[DownloadSpigotServer] GetBukkit returned %d, falling back to Paper", resp.StatusCode), nil)
-		return DownloadPaperServer(version, dest)
-	}
-
-	jarData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	// Verify it looks like a JAR (ZIP magic bytes PK)
-	if len(jarData) < 4 || jarData[0] != 0x50 || jarData[1] != 0x4B {
-		logger.Warn("[DownloadSpigotServer] Downloaded file is not a valid JAR, falling back to Paper", nil)
-		return DownloadPaperServer(version, dest)
+	if err == nil {
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		resp, doErr := http.DefaultClient.Do(req)
+		if doErr == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				if jarData, readErr := io.ReadAll(resp.Body); readErr == nil {
+					// Verify it looks like a JAR (ZIP magic bytes PK)
+					if len(jarData) >= 4 && jarData[0] == 0x50 && jarData[1] == 0x4B {
+						return os.WriteFile(filepath.Join(dest, "server.jar"), jarData, 0644)
+					}
+					logger.Warn("[DownloadSpigotServer] GetBukkit file is not a valid JAR, falling back to Paper", nil)
+				}
+			} else {
+				logger.Warn(fmt.Sprintf("[DownloadSpigotServer] GetBukkit returned HTTP %d, falling back to Paper", resp.StatusCode), nil)
+			}
+		} else {
+			logger.Warn("[DownloadSpigotServer] GetBukkit unreachable: "+doErr.Error()+", falling back to Paper", nil)
+		}
 	}
 
-	return os.WriteFile(filepath.Join(dest, "server.jar"), jarData, 0644)
+	// Fallback: Paper is fully Spigot/Bukkit-compatible and supports all Spigot plugins
+	logger.Info("[DownloadSpigotServer] Using Paper fallback for version="+version, nil)
+	return DownloadPaperServer(version, dest)
 }
 
 // FetchJavaVersions fetches available Java edition versions from Mojang

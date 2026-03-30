@@ -42,7 +42,8 @@ export function useServerLogs(serverId) {
       ws.close();
       ws = null;
     }
-    listeners.clear();
+    // Do NOT clear listeners here — they must survive reconnects.
+    // Callers (onUnmounted) are responsible for releasing refs.
   }
 
   return { connect, disconnect, onLine };
