@@ -68,7 +68,7 @@
       <div v-else-if="searchResult" class="found-process-card glass-card">
         <div class="result-header">
           <div class="result-title">
-            <el-icon class="pulse-icon"><Target /></el-icon>
+            <el-icon class="pulse-icon"><Compass /></el-icon>
             <span>Process Found on Port {{ searchResult.port }}</span>
           </div>
           <el-button link :icon="Close" @click="searchResult = null" />
@@ -166,7 +166,7 @@ import { ref, onMounted, computed } from "vue";
 import { 
   Refresh, Connection, Cpu, Odometer, 
   More, View, CircleClose, Search,
-  Target, Close
+  Compass, Close
 } from "@element-plus/icons-vue";
 import { useServersStore } from "../stores/servers";
 import { ElMessageBox, ElMessage } from "element-plus";
