@@ -185,6 +185,7 @@ import {
   Link,
   DocumentCopy,
   Document,
+  Odometer,
   User,
   Setting,
   SwitchButton,

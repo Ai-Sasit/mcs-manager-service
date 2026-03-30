@@ -12,21 +12,21 @@ import (
 )
 
 type ScheduleEntry struct {
-	ID       string `json:"id"`
-	ServerID string `json:"server_id"`
-	Task     string `json:"task"`     // "backup", "restart", "command"
-	Cron     string `json:"cron"`     // e.g. "0 0 * * *"
-	Command  string `json:"command"`  // Only for task="command"
-	Enabled  bool   `json:"enabled"`
+	ID       string       `json:"id"`
+	ServerID string       `json:"server_id"`
+	Task     string       `json:"task"`    // "backup", "restart", "command"
+	Cron     string       `json:"cron"`    // e.g. "0 0 * * *"
+	Command  string       `json:"command"` // Only for task="command"
+	Enabled  bool         `json:"enabled"`
 	EntryID  cron.EntryID `json:"-"`
 }
 
 type SchedulerService struct {
-	mu        sync.RWMutex
-	cron      *cron.Cron
-	entries   map[string]*ScheduleEntry
-	state     *AppState
-	dataDir   string
+	mu      sync.RWMutex
+	cron    *cron.Cron
+	entries map[string]*ScheduleEntry
+	state   *AppState
+	dataDir string
 }
 
 func NewSchedulerService(state *AppState) *SchedulerService {
@@ -137,7 +137,7 @@ func (s *SchedulerService) ToggleSchedule(id string, enabled bool) error {
 
 func (s *SchedulerService) runTask(e *ScheduleEntry) {
 	utils.LogAudit("system", "SCHEDULE_TASK_START", e.ServerID, fmt.Sprintf("Running task: %s", e.Task))
-	
+
 	switch e.Task {
 	case "backup":
 		// Backup logic
