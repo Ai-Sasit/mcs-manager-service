@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+frontend/dist/
+
+# Data
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+logs/
+
+bun.lock
+.air.toml
+tmp

@@ -1,0 +1,134 @@
+name: Deploy mc-manage
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-frontend:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy frontend to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: frontend/dist/*
+          target: /var/www/${{ secrets.DOMAIN_NAME }}
+          strip_components: 2
+
+      - name: Set permissions on frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            chown -R www-data:www-data /var/www/${{ secrets.DOMAIN_NAME }} || true
+            chmod -R 755 /var/www/${{ secrets.DOMAIN_NAME }}
+
+  deploy-backend:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build binary (Linux amd64)
+        working-directory: backend
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -ldflags="-s -w" -o mc-manage-backend main.go
+
+      - name: Upload binary to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: backend/mc-manage-backend
+          target: /tmp/mc-manage/
+          strip_components: 1
+
+      - name: Install & restart backend service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+
+            INSTALL_DIR="/opt/mc-manage/backend"
+            SERVICE_NAME="mc-manage"
+            BIN_NAME="mc-manage-backend"
+
+            # Ensure install directory exists
+            mkdir -p "$INSTALL_DIR"
+
+            # Stop service before replacing binary
+            systemctl stop "$SERVICE_NAME" || true
+
+            # Copy new binary
+            mv /tmp/mc-manage/"$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
+            chmod +x "$INSTALL_DIR/$BIN_NAME"
+
+            # Install systemd service if not present
+            if [ ! -f /etc/systemd/system/"$SERVICE_NAME".service ]; then
+              cat > /etc/systemd/system/"$SERVICE_NAME".service <<'EOF'
+            [Unit]
+            Description=Minecraft Management Backend
+            After=network.target
+
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/opt/mc-manage/backend
+            ExecStart=/opt/mc-manage/backend/mc-manage-backend
+            Restart=always
+            RestartSec=5
+            Environment=PORT=8080
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+              systemctl daemon-reload
+              systemctl enable "$SERVICE_NAME"
+            fi
+
+            # Start service
+            systemctl start "$SERVICE_NAME"
+            systemctl is-active --quiet "$SERVICE_NAME" && echo "Service started successfully" || (journalctl -u "$SERVICE_NAME" -n 20 && exit 1)
