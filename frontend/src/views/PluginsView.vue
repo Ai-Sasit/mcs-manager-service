@@ -17,6 +17,7 @@
           v-if="selectedServerId"
           :action="uploadUrl"
           :headers="uploadHeaders"
+          name="file"
           :on-success="handleUploadSuccess"
           :on-error="handleUploadError"
           :show-file-list="false"
@@ -69,6 +70,7 @@ import { ref, onMounted, computed } from "vue";
 import { Upload, Refresh, Delete, Connection } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import api from "../api";
+import { API_BASE_URL } from "../constants";
 import { useServersStore } from "../stores/servers";
 
 const store = useServersStore();
@@ -79,13 +81,13 @@ const loading = ref(false);
 const servers = computed(() => store.servers);
 
 const uploadUrl = computed(() => {
-  return `${import.meta.env.VITE_API_URL || '/api'}/servers/${selectedServerId.value}/plugins`;
+  return `${API_BASE_URL}/servers/${selectedServerId.value}/plugins`;
 });
 
 const uploadHeaders = computed(() => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("mc_token");
   return {
-    Authorization: `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   };
 });
 

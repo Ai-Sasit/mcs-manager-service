@@ -63,6 +63,11 @@ export default {
     api.put(`/schedules/${encodeURIComponent(id)}/toggle`, { enabled }),
   deleteSchedule: (id) => api.delete(`/schedules/${encodeURIComponent(id)}`),
 
+  // Config
+  getConfig: (id) => api.get(`/servers/${encodeURIComponent(id)}/config`),
+  updateConfig: (id, config) =>
+    api.put(`/servers/${encodeURIComponent(id)}/config`, config),
+
   // System
   getAuditLogs: () => api.get("/audit-logs"),
   getSettings: () => api.get("/settings"),

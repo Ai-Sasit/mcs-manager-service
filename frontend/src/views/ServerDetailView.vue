@@ -501,7 +501,10 @@ async function removePlugin(name) {
 }
 
 watch(activeTab, (tab) => {
-  if (tab === "config") loadConfig();
+  if (tab === "config") {
+    console.log("Loading config");
+    loadConfig();
+  }
 });
 
 watch(
