@@ -385,7 +385,7 @@ func DownloadSpigotServer(version, dest string) error {
 	logger.Info("[DownloadSpigotServer] Downloading for version="+version, nil)
 
 	// Try GetBukkit mirror
-	url := fmt.Sprintf("https://download.getbukkit.org/spigot/spigot-%s.jar", version)
+	url := fmt.Sprintf("https://cdn.getbukkit.org/spigot/spigot-%s.jar", version)
 	req, err := http.NewRequest("GET", url, nil)
 	if err == nil {
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
