@@ -1,9 +1,9 @@
-name: Deploy mc-manage
+name: Deploy MC Manage
 
 on:
   push:
     branches:
-      - main
+      - deploy
 
 jobs:
   deploy-frontend:
@@ -27,7 +27,7 @@ jobs:
       - name: Create .env file
         working-directory: frontend
         run: |
-          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+          echo "VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}" >> .env
 
       - name: Build
         working-directory: frontend
@@ -36,28 +36,88 @@ jobs:
       - name: Deploy frontend to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
           source: frontend/dist/*
-          target: /var/www/${{ secrets.DOMAIN_NAME }}
+          target: /tmp/mc-manage-frontend/
           strip_components: 2
 
-      - name: Set permissions on frontend
+      - name: Publish frontend
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
           script: |
-            chown -R www-data:www-data /var/www/${{ secrets.DOMAIN_NAME }} || true
-            chmod -R 755 /var/www/${{ secrets.DOMAIN_NAME }}
+            set -e
+            sudo mkdir -p /var/www/${{ vars.DOMAIN_NAME }}
+            sudo rsync -av --delete /tmp/mc-manage-frontend/ /var/www/${{ vars.DOMAIN_NAME }}/
+            sudo chown -R www-data:www-data /var/www/${{ vars.DOMAIN_NAME }}
+            sudo chmod -R 755 /var/www/${{ vars.DOMAIN_NAME }}
+            rm -rf /tmp/mc-manage-frontend
+
+  deploy-database:
+    name: Deploy MongoDB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare database upload directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
+          script: |
+            mkdir -p /tmp/mc-manage-database
+            rm -rf /tmp/mc-manage-database/*
+
+      - name: Upload database compose
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
+          source: database/
+          target: /tmp/mc-manage-database/
+          strip_components: 0
+
+      - name: Start MongoDB
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
+          script: |
+            set -e
+            DB_DIR="/opt/mc-manage/database"
+            sudo mkdir -p "$DB_DIR"
+            sudo rsync -av --delete /tmp/mc-manage-database/database/ "$DB_DIR/"
+            rm -rf /tmp/mc-manage-database
+
+            sudo tee "$DB_DIR/.env" <<EOF > /dev/null
+            MONGO_INITDB_PORT=${{ vars.MONGO_INITDB_PORT || '27017' }}
+            MONGO_INITDB_ROOT_PASSWORD=${{ vars.MONGO_INITDB_ROOT_PASSWORD }}
+            MONGO_INITDB_DATABASE=${{ vars.MONGO_INITDB_DATABASE || 'mc-manage' }}
+            EOF
+            sudo chmod 600 "$DB_DIR/.env"
+            sudo chown -R ${{ vars.VPS_USER }}:${{ vars.VPS_USER }} "$DB_DIR"
+
+            cd "$DB_DIR"
+            docker compose up -d --remove-orphans
+            docker compose ps
 
   deploy-backend:
     name: Build & Deploy Backend
     runs-on: ubuntu-latest
+    needs: deploy-database
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,10 +139,10 @@ jobs:
       - name: Upload binary to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
           source: backend/mc-manage-backend
           target: /tmp/mc-manage/
           strip_components: 1
@@ -90,11 +150,10 @@ jobs:
       - name: Install & restart backend service
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          envs: ADMIN_USERNAME,ADMIN_PASSWORD,JWT_SECRET,PORT,DEBUG_MODE
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USER }}
+          key: ${{ vars.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || 22 }}
           script: |
             set -e
 
@@ -102,31 +161,31 @@ jobs:
             SERVICE_NAME="mc-manage"
             BIN_NAME="mc-manage-backend"
 
-            # Ensure install directory exists
-            mkdir -p "$INSTALL_DIR"
+            sudo mkdir -p "$INSTALL_DIR"
+            sudo chown ${{ vars.VPS_USER }}:${{ vars.VPS_USER }} "$INSTALL_DIR"
 
-            # Write .env file
-            cat > "$INSTALL_DIR/.env" <<EOF
-            ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
-            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PORT=${{ secrets.BACKEND_PORT || '8080' }}
-            DEBUG_MODE=${{ secrets.DEBUG_MODE || 'false' }}
+            sudo tee "$INSTALL_DIR/.env" <<EOF > /dev/null
+            ADMIN_USERNAME=${{ vars.ADMIN_USERNAME || 'admin' }}
+            ADMIN_PASSWORD=${{ vars.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ vars.JWT_SECRET }}
+            PORT=${{ vars.BACKEND_PORT || '8080' }}
+            DEBUG_MODE=${{ vars.DEBUG_MODE || 'false' }}
+            MONGO_DB_NAME=${{ vars.MONGO_DB_NAME || 'mc-manage' }}
+            MONGO_URI=${{ vars.MONGO_URI }}
             EOF
-            chmod 600 "$INSTALL_DIR/.env"
+            sudo chmod 600 "$INSTALL_DIR/.env"
+            sudo chown root:root "$INSTALL_DIR/.env"
 
-            # Stop service before replacing binary
-            systemctl stop "$SERVICE_NAME" || true
+            sudo systemctl stop "$SERVICE_NAME" || true
 
-            # Copy new binary
-            mv /tmp/mc-manage/"$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
-            chmod +x "$INSTALL_DIR/$BIN_NAME"
+            sudo mv /tmp/mc-manage/"$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
+            sudo chmod +x "$INSTALL_DIR/$BIN_NAME"
+            sudo chown root:root "$INSTALL_DIR/$BIN_NAME"
 
-            # Install systemd service if not present
             if [ ! -f /etc/systemd/system/"$SERVICE_NAME".service ]; then
-              cat > /etc/systemd/system/"$SERVICE_NAME".service <<'EOF'
+              sudo tee /etc/systemd/system/"$SERVICE_NAME".service <<'EOF' > /dev/null
             [Unit]
-            Description=Minecraft Management Backend
+            Description=MC Manage Backend Service
             After=network.target
 
             [Service]
@@ -141,10 +200,9 @@ jobs:
             [Install]
             WantedBy=multi-user.target
             EOF
-              systemctl daemon-reload
-              systemctl enable "$SERVICE_NAME"
+              sudo systemctl daemon-reload
+              sudo systemctl enable "$SERVICE_NAME"
             fi
 
-            # Start service
-            systemctl start "$SERVICE_NAME"
-            systemctl is-active --quiet "$SERVICE_NAME" && echo "Service started successfully" || (journalctl -u "$SERVICE_NAME" -n 20 && exit 1)
+            sudo systemctl start "$SERVICE_NAME"
+            sudo systemctl is-active --quiet "$SERVICE_NAME" && echo "Service started successfully" || (sudo journalctl -u "$SERVICE_NAME" -n 20 && exit 1)
