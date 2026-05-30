@@ -1,5 +1,4 @@
-import api from "../plugins/axios";
-import { ENDPOINTS } from "../constants";
+import api from "@/api/client";
 
 export default {
   // Auth
@@ -86,12 +85,4 @@ export default {
   listBackendLogFiles: () => api.get("/backend-logs"),
   getBackendLogFile: (file, tail = 500) =>
     api.get(`/backend-logs/file?file=${encodeURIComponent(file)}&tail=${tail}`),
-
-  // UFW Firewall
-  getUfwStatus: () => api.get("/ufw/status"),
-  getUfwRules: () => api.get("/ufw/rules"),
-  allowUfwRule: (data) => api.post("/ufw/allow", data),
-  denyUfwRule: (data) => api.post("/ufw/deny", data),
-  deleteUfwRule: (number) => api.delete(`/ufw/rules/${number}`),
-  toggleUfw: (enabled) => api.post("/ufw/toggle", { enabled }),
 };

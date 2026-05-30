@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import serverApi from "../api";
+import serverApi from "@/api";
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref(localStorage.getItem("mc_token") || "");

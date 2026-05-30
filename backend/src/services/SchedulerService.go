@@ -1,24 +1,27 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
 	"mc-manage-backend/src/utils"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/robfig/cron/v3"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type ScheduleEntry struct {
-	ID       string       `json:"id"`
-	ServerID string       `json:"server_id"`
-	Task     string       `json:"task"`    // "backup", "restart", "command"
-	Cron     string       `json:"cron"`    // e.g. "0 0 * * *"
-	Command  string       `json:"command"` // Only for task="command"
-	Enabled  bool         `json:"enabled"`
-	EntryID  cron.EntryID `json:"-"`
+	ID       string       `bson:"id" json:"id"`
+	ServerID string       `bson:"server_id" json:"server_id"`
+	Task     string       `bson:"task" json:"task"`       // "backup", "restart", "command"
+	Cron     string       `bson:"cron" json:"cron"`       // e.g. "0 0 * * *"
+	Command  string       `bson:"command" json:"command"` // Only for task="command"
+	Enabled  bool         `bson:"enabled" json:"enabled"`
+	EntryID  cron.EntryID `bson:"-" json:"-"`
 }
 
 type SchedulerService struct {
@@ -26,7 +29,7 @@ type SchedulerService struct {
 	cron    *cron.Cron
 	entries map[string]*ScheduleEntry
 	state   *AppState
-	dataDir string
+	col     *mongo.Collection
 }
 
 func NewSchedulerService(state *AppState) *SchedulerService {
@@ -34,7 +37,7 @@ func NewSchedulerService(state *AppState) *SchedulerService {
 		cron:    cron.New(),
 		entries: make(map[string]*ScheduleEntry),
 		state:   state,
-		dataDir: state.DataDir,
+		col:     utils.GetCollection(utils.DB, "schedules"),
 	}
 	s.loadEntries()
 	s.cron.Start()
@@ -42,53 +45,72 @@ func NewSchedulerService(state *AppState) *SchedulerService {
 }
 
 func (s *SchedulerService) loadEntries() {
-	path := filepath.Join(s.dataDir, "schedules.json")
-	data, err := os.ReadFile(path)
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+
+	cursor, err := s.col.Find(ctx, bson.M{})
 	if err != nil {
+		logger.Error("[SchedulerService] Failed to load schedules from MongoDB: "+err.Error(), nil)
 		return
 	}
+	defer cursor.Close(ctx)
 
 	var saved []ScheduleEntry
-	if err := json.Unmarshal(data, &saved); err != nil {
-		logger.Error("[SchedulerService] Failed to load schedules: "+err.Error(), nil)
+	if err := cursor.All(ctx, &saved); err != nil {
+		logger.Error("[SchedulerService] Failed to decode schedules from MongoDB: "+err.Error(), nil)
 		return
 	}
 
 	for _, entry := range saved {
-		e := entry // copy
-		s.AddSchedule(&e)
+		e := entry
+		if err := s.registerSchedule(&e); err != nil {
+			logger.Error("[SchedulerService] Failed to register schedule "+e.ID+": "+err.Error(), nil)
+			continue
+		}
+		s.entries[e.ID] = &e
 	}
 }
 
-func (s *SchedulerService) save() {
-	s.mu.RLock()
-	var list []ScheduleEntry
-	for _, e := range s.entries {
-		list = append(list, *e)
+func (s *SchedulerService) saveEntry(e *ScheduleEntry) {
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := s.col.ReplaceOne(ctx, bson.M{"id": e.ID}, e, options.Replace().SetUpsert(true)); err != nil {
+		logger.Error("[SchedulerService] Failed to save schedule "+e.ID+": "+err.Error(), nil)
 	}
-	s.mu.RUnlock()
+}
 
-	path := filepath.Join(s.dataDir, "schedules.json")
-	data, _ := json.MarshalIndent(list, "", "  ")
-	os.WriteFile(path, data, 0644)
+func (s *SchedulerService) deleteEntry(id string) {
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := s.col.DeleteOne(ctx, bson.M{"id": id}); err != nil {
+		logger.Error("[SchedulerService] Failed to delete schedule "+id+": "+err.Error(), nil)
+	}
+}
+
+func (s *SchedulerService) registerSchedule(e *ScheduleEntry) error {
+	if !e.Enabled {
+		return nil
+	}
+	id, err := s.cron.AddFunc(e.Cron, func() {
+		s.runTask(e)
+	})
+	if err != nil {
+		return err
+	}
+	e.EntryID = id
+	return nil
 }
 
 func (s *SchedulerService) AddSchedule(e *ScheduleEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if e.Enabled {
-		id, err := s.cron.AddFunc(e.Cron, func() {
-			s.runTask(e)
-		})
-		if err != nil {
-			return err
-		}
-		e.EntryID = id
+	if err := s.registerSchedule(e); err != nil {
+		return err
 	}
 
 	s.entries[e.ID] = e
-	s.save()
+	s.saveEntry(e)
 	return nil
 }
 
@@ -101,7 +123,7 @@ func (s *SchedulerService) DeleteSchedule(id string) {
 			s.cron.Remove(e.EntryID)
 		}
 		delete(s.entries, id)
-		s.save()
+		s.deleteEntry(id)
 	}
 }
 
@@ -119,19 +141,18 @@ func (s *SchedulerService) ToggleSchedule(id string, enabled bool) error {
 	}
 
 	if enabled {
-		id, err := s.cron.AddFunc(e.Cron, func() {
-			s.runTask(e)
-		})
-		if err != nil {
+		e.Enabled = true
+		if err := s.registerSchedule(e); err != nil {
+			e.Enabled = false
 			return err
 		}
-		e.EntryID = id
 	} else {
 		s.cron.Remove(e.EntryID)
+		e.EntryID = 0
+		e.Enabled = false
 	}
 
-	e.Enabled = enabled
-	s.save()
+	s.saveEntry(e)
 	return nil
 }
 
@@ -140,7 +161,6 @@ func (s *SchedulerService) runTask(e *ScheduleEntry) {
 
 	switch e.Task {
 	case "backup":
-		// Backup logic
 		srv, ok := s.state.GetServer(e.ServerID)
 		if !ok {
 			return

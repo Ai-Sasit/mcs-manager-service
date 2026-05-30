@@ -3,34 +3,19 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AuditLog struct {
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	User      string    `json:"user"`
-	Action    string    `json:"action"`
-	Target    string    `json:"target"`
-	Details   string    `json:"details"`
-}
-
-var (
-	auditLogs []AuditLog
-	auditMu   sync.Mutex
-	auditPath = filepath.Join("data", "audit.json")
-)
-
-func init() {
-	os.MkdirAll("data", 0755)
-	file, err := os.ReadFile(auditPath)
-	if err == nil {
-		json.Unmarshal(file, &auditLogs)
-	}
+	ID        string    `bson:"id" json:"id"`
+	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
+	User      string    `bson:"user" json:"user"`
+	Action    string    `bson:"action" json:"action"`
+	Target    string    `bson:"target" json:"target"`
+	Details   string    `bson:"details" json:"details"`
 }
 
 func GenerateID() string {
@@ -40,8 +25,6 @@ func GenerateID() string {
 }
 
 func LogAudit(user, action, target, details string) {
-	auditMu.Lock()
-	defer auditMu.Unlock()
 	entry := AuditLog{
 		ID:        GenerateID(),
 		Timestamp: time.Now(),
@@ -50,25 +33,33 @@ func LogAudit(user, action, target, details string) {
 		Target:    target,
 		Details:   details,
 	}
-	// Prepend for newest first
-	auditLogs = append([]AuditLog{entry}, auditLogs...)
-	// Keep only last 1000 items
-	if len(auditLogs) > 1000 {
-		auditLogs = auditLogs[:1000]
+
+	ctx, cancel := MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := GetCollection(DB, "audit_logs").InsertOne(ctx, entry); err != nil {
+		logger.Error("[Audit] Failed to write audit log: "+err.Error(), nil)
 	}
-	saveAuditLogs()
 }
 
 func GetAuditLogs() []AuditLog {
-	auditMu.Lock()
-	defer auditMu.Unlock()
-	if auditLogs == nil {
+	ctx, cancel := MongoContext(10 * time.Second)
+	defer cancel()
+
+	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: -1}}).SetLimit(1000)
+	cursor, err := GetCollection(DB, "audit_logs").Find(ctx, bson.M{}, opts)
+	if err != nil {
+		logger.Error("[Audit] Failed to load audit logs: "+err.Error(), nil)
 		return []AuditLog{}
 	}
-	return auditLogs
-}
+	defer cursor.Close(ctx)
 
-func saveAuditLogs() {
-	data, _ := json.MarshalIndent(auditLogs, "", "  ")
-	os.WriteFile(auditPath, data, 0644)
+	var logs []AuditLog
+	if err := cursor.All(ctx, &logs); err != nil {
+		logger.Error("[Audit] Failed to decode audit logs: "+err.Error(), nil)
+		return []AuditLog{}
+	}
+	if logs == nil {
+		return []AuditLog{}
+	}
+	return logs
 }

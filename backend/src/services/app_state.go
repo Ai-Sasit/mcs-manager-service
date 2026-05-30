@@ -2,7 +2,6 @@ package services
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mc-manage-backend/src/models"
@@ -14,6 +13,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var logger = utils.NewLogger("mc-manage")
@@ -52,6 +55,7 @@ type AppState struct {
 	Scheduler   *SchedulerService
 	UserService *UserService
 	DataDir     string
+	serversCol  *mongo.Collection
 }
 
 func NewAppState() *AppState {
@@ -66,6 +70,7 @@ func NewAppState() *AppState {
 		stdinPipes: make(map[string]io.WriteCloser),
 		logBrokers: make(map[string]*utils.LogBroker),
 		DataDir:    dataDir,
+		serversCol: utils.GetCollection(utils.DB, "servers"),
 	}
 
 	state.loadServers()
@@ -75,23 +80,27 @@ func NewAppState() *AppState {
 }
 
 func (s *AppState) loadServers() {
-	path := filepath.Join(s.DataDir, "servers.json")
-	data, err := os.ReadFile(path)
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+
+	cursor, err := s.serversCol.Find(ctx, bson.M{})
 	if err != nil {
-		logger.Info("[AppState] No existing servers.json, starting fresh", nil)
+		logger.Error("[AppState] Failed to load servers from MongoDB: "+err.Error(), nil)
 		return
 	}
+	defer cursor.Close(ctx)
 
-	var servers map[string]*models.ServerConfig
-	if err := json.Unmarshal(data, &servers); err != nil {
-		logger.Error("[AppState] Failed to parse servers.json: "+err.Error(), nil)
+	var servers []*models.ServerConfig
+	if err := cursor.All(ctx, &servers); err != nil {
+		logger.Error("[AppState] Failed to decode servers from MongoDB: "+err.Error(), nil)
 		return
 	}
 
 	for _, srv := range servers {
 		srv.Status = models.StatusStopped
+		s.Servers[srv.ID] = srv
+		_, _ = s.serversCol.UpdateOne(ctx, bson.M{"id": srv.ID}, bson.M{"$set": bson.M{"status": models.StatusStopped}})
 	}
-	s.Servers = servers
 	logger.Info(fmt.Sprintf("[AppState] Loaded %d server(s)", len(servers)), nil)
 }
 
@@ -99,12 +108,14 @@ func (s *AppState) Save() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	path := filepath.Join(s.DataDir, "servers.json")
-	data, err := json.MarshalIndent(s.Servers, "", "  ")
-	if err != nil {
-		return
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	upsert := options.Replace().SetUpsert(true)
+	for _, srv := range s.Servers {
+		if _, err := s.serversCol.ReplaceOne(ctx, bson.M{"id": srv.ID}, srv, upsert); err != nil {
+			logger.Error("[AppState] Failed to save server "+srv.ID+": "+err.Error(), nil)
+		}
 	}
-	os.WriteFile(path, data, 0644)
 }
 
 func (s *AppState) GetServer(id string) (*models.ServerConfig, bool) {
@@ -140,7 +151,11 @@ func (s *AppState) AddServer(config *models.ServerConfig) {
 	s.mu.Lock()
 	s.Servers[config.ID] = config
 	s.mu.Unlock()
-	s.Save()
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := s.serversCol.ReplaceOne(ctx, bson.M{"id": config.ID}, config, options.Replace().SetUpsert(true)); err != nil {
+		logger.Error("[AppState] Failed to add server "+config.ID+": "+err.Error(), nil)
+	}
 }
 
 func (s *AppState) RemoveServer(id string) (*models.ServerConfig, bool) {
@@ -151,7 +166,11 @@ func (s *AppState) RemoveServer(id string) (*models.ServerConfig, bool) {
 	}
 	s.mu.Unlock()
 	if ok {
-		s.Save()
+		ctx, cancel := utils.MongoContext(10 * time.Second)
+		defer cancel()
+		if _, err := s.serversCol.DeleteOne(ctx, bson.M{"id": id}); err != nil {
+			logger.Error("[AppState] Failed to remove server "+id+": "+err.Error(), nil)
+		}
 	}
 	return srv, ok
 }

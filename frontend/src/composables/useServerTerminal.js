@@ -1,4 +1,4 @@
-import { WS_BASE_URL } from "../constants";
+import { WS_BASE_URL } from "@/constants";
 
 export function useServerTerminal(serverId) {
   let ws = null;

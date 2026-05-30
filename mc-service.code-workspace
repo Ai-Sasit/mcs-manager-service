@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "name": ".github",
+      "path": ".github",
+    },
+    {
+      "name": "backend",
+      "path": "backend",
+    },
+    {
+      "name": "frontend",
+      "path": "frontend",
+    },
+    {
+      "name": "database",
+      "path": "database",
+    },
+  ],
+}

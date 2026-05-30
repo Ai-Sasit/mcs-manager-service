@@ -1,0 +1,138 @@
+/* ─── Element Plus Overrides ─── */
+
+/* Cards & Menus */
+.el-card {
+    background: var(--color-white) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+.el-menu {
+    background: transparent !important;
+    border-right: none !important;
+}
+
+.el-popper {
+    border-radius: var(--radius) !important;
+    color: var(--color-text) !important;
+    background: var(--color-white) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+/* Modals / Dialogs */
+.el-dialog, .el-dropdown-menu {
+    background: var(--color-white) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12) !important;
+}
+
+.el-dialog__header, .el-dialog__body, .el-dialog__footer {
+    background: transparent !important;
+}
+
+.el-overlay {
+    background-color: rgba(0, 0, 0, 0.35) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+/* Inputs */
+.el-input__wrapper, .el-textarea__inner, .el-select .el-input__wrapper {
+    background: var(--color-white) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: none !important;
+    padding: 0 12px !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.el-input__wrapper:hover, .el-textarea__inner:hover {
+    border-color: var(--color-text-muted) !important;
+}
+
+.el-input__wrapper:focus, .el-input__wrapper.is-focus, .el-textarea__inner:focus {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12) !important;
+}
+
+::placeholder {
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+/* Buttons */
+.el-button {
+    border-radius: var(--radius) !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.el-button--primary {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: white !important;
+}
+
+.el-button--primary:hover {
+    background: var(--color-primary-dark) !important;
+    border-color: var(--color-primary-dark) !important;
+}
+
+/* Tables */
+.el-table, .el-table__expanded-cell, .el-table th, .el-table tr,
+.el-table th.el-table__cell, .el-table td.el-table__cell {
+    background: var(--color-white) !important;
+}
+
+.el-table {
+    --el-table-border-color: var(--color-border) !important;
+    --el-table-header-bg-color: var(--color-bg) !important;
+    --el-table-tr-bg-color: transparent !important;
+    --el-table-row-hover-bg-color: var(--color-border-light) !important;
+    font-size: 14px;
+}
+
+.el-table th.el-table__cell {
+    font-weight: 600 !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+}
+
+.el-table::before, .el-table__inner-wrapper::before {
+    display: none !important;
+}
+
+/* Tabs */
+.el-tabs__header {
+    margin-bottom: 0 !important;
+}
+
+.el-tabs__nav-wrap::after {
+    height: 1px !important;
+    background: var(--color-border) !important;
+}
+
+.el-tabs__item {
+    font-weight: 500 !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 14px !important;
+}
+
+.el-tabs__item.is-active {
+    color: var(--color-primary) !important;
+    font-weight: 600 !important;
+}
+
+.el-tabs__active-bar {
+    background-color: var(--color-primary) !important;
+}
+
+/* Tags */
+.el-tag--success {
+    background: rgba(34, 197, 94, 0.1) !important;
+    color: #16a34a !important;
+    border-color: rgba(34, 197, 94, 0.2) !important;
+}

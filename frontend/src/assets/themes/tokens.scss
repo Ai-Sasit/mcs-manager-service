@@ -1,0 +1,62 @@
+:root {
+    /* ─── Clean Green Admin Palette ─── */
+    --color-primary: #10b981;
+    --color-primary-light: #34d399;
+    --color-primary-lighter: #6ee7b7;
+    --color-primary-dark: #059669;
+    --color-primary-bg: rgba(16, 185, 129, 0.08);
+    
+    --color-accent: #14b8a6;
+    --color-accent-light: #2dd4bf;
+    
+    --color-bg: #f5f7fa;
+    --color-bg-sidebar: #ffffff;
+    --color-white: #ffffff;
+    --color-text: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+    
+    --color-success: #22c55e;
+    --color-danger: #ef4444;
+    --color-warning: #f59e0b;
+    --color-info: #3b82f6;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-sidebar: 2px 0 8px rgba(0, 0, 0, 0.04);
+    
+    --radius: 8px;
+    --radius-sm: 6px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --font-en: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* ─── Premium Glass Effects ─── */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-blur: blur(12px);
+    --shadow-premium: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+    --shadow-float: 0 20px 50px -12px rgba(16, 185, 129, 0.15);
+
+    /* Element Plus Overrides */
+    --el-color-primary: var(--color-primary);
+    --el-color-primary-light-3: #34d399;
+    --el-color-primary-light-5: #6ee7b7;
+    --el-color-primary-light-7: #a7f3d0;
+    --el-color-primary-light-9: #d1fae5;
+    --el-color-primary-dark-2: #059669;
+    --el-bg-color: var(--color-white);
+    --el-bg-color-page: var(--color-bg);
+    --el-bg-color-overlay: var(--color-white);
+    --el-border-color: var(--color-border);
+    --el-border-color-light: var(--color-border-light);
+    --el-box-shadow: var(--shadow-card);
+    --el-box-shadow-light: var(--shadow-sm);
+    --el-border-radius-base: var(--radius);
+    --el-border-radius-small: var(--radius-sm);
+    --el-font-size-base: 14px;
+}

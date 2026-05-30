@@ -10,6 +10,7 @@ target/
 # Build output
 dist/
 frontend/dist/
+frontend/vite-dev-*.log
 
 # Data
 data/

@@ -1,23 +1,25 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
+	"mc-manage-backend/src/utils"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	ID           string `json:"id"`
-	Username     string `json:"username"`
-	PasswordHash string `json:"password_hash"`
-	Role         string `json:"role"` // "admin" or "viewer"
-	CreatedAt    string `json:"created_at"`
+	ID           string `bson:"id" json:"id"`
+	Username     string `bson:"username" json:"username"`
+	PasswordHash string `bson:"password_hash" json:"password_hash"`
+	Role         string `bson:"role" json:"role"` // "admin" or "viewer"
+	CreatedAt    string `bson:"created_at" json:"created_at"`
 }
 
 type UserPublic struct {
@@ -28,19 +30,18 @@ type UserPublic struct {
 }
 
 type UserService struct {
-	mu      sync.RWMutex
-	users   map[string]*User
-	dataDir string
+	mu    sync.RWMutex
+	users map[string]*User
+	col   *mongo.Collection
 }
 
 func NewUserService(dataDir string) *UserService {
 	svc := &UserService{
-		users:   make(map[string]*User),
-		dataDir: dataDir,
+		users: make(map[string]*User),
+		col:   utils.GetCollection(utils.DB, "users"),
 	}
 	svc.load()
 
-	// Seed default admin if no users exist
 	if len(svc.users) == 0 {
 		adminUser := os.Getenv("ADMIN_USERNAME")
 		adminPass := os.Getenv("ADMIN_PASSWORD")
@@ -51,20 +52,16 @@ func NewUserService(dataDir string) *UserService {
 			adminPass = "admin"
 		}
 		hash, _ := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
-		svc.users[uuid.New().String()] = &User{
-			ID:           uuid.New().String(),
+		id := uuid.New().String()
+		user := &User{
+			ID:           id,
 			Username:     adminUser,
 			PasswordHash: string(hash),
 			Role:         "admin",
 			CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 		}
-		// Fix: use the ID as the map key
-		for _, u := range svc.users {
-			delete(svc.users, u.ID)
-			svc.users[u.ID] = u
-			break
-		}
-		svc.save()
+		svc.users[id] = user
+		svc.saveUser(user)
 		logger.Info("[UserService] Seeded default admin user: "+adminUser, nil)
 	}
 
@@ -72,24 +69,41 @@ func NewUserService(dataDir string) *UserService {
 }
 
 func (s *UserService) load() {
-	path := filepath.Join(s.dataDir, "users.json")
-	data, err := os.ReadFile(path)
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+
+	cursor, err := s.col.Find(ctx, bson.M{})
 	if err != nil {
+		logger.Error("[UserService] Failed to load users from MongoDB: "+err.Error(), nil)
 		return
 	}
-	var users map[string]*User
-	if err := json.Unmarshal(data, &users); err != nil {
-		logger.Error("[UserService] Failed to parse users.json: "+err.Error(), nil)
+	defer cursor.Close(ctx)
+
+	var users []*User
+	if err := cursor.All(ctx, &users); err != nil {
+		logger.Error("[UserService] Failed to decode users from MongoDB: "+err.Error(), nil)
 		return
 	}
-	s.users = users
+	for _, user := range users {
+		s.users[user.ID] = user
+	}
 	logger.Info(fmt.Sprintf("[UserService] Loaded %d user(s)", len(users)), nil)
 }
 
-func (s *UserService) save() {
-	path := filepath.Join(s.dataDir, "users.json")
-	data, _ := json.MarshalIndent(s.users, "", "  ")
-	os.WriteFile(path, data, 0644)
+func (s *UserService) saveUser(user *User) {
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := s.col.ReplaceOne(ctx, bson.M{"id": user.ID}, user, options.Replace().SetUpsert(true)); err != nil {
+		logger.Error("[UserService] Failed to save user "+user.ID+": "+err.Error(), nil)
+	}
+}
+
+func (s *UserService) deleteUser(id string) {
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+	if _, err := s.col.DeleteOne(ctx, bson.M{"id": id}); err != nil {
+		logger.Error("[UserService] Failed to delete user "+id+": "+err.Error(), nil)
+	}
 }
 
 func (s *UserService) Authenticate(username, password string) (*User, error) {
@@ -127,7 +141,6 @@ func (s *UserService) CreateUser(username, password, role string) (*UserPublic, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Check duplicate username
 	for _, u := range s.users {
 		if u.Username == username {
 			return nil, fmt.Errorf("username already exists")
@@ -152,7 +165,7 @@ func (s *UserService) CreateUser(username, password, role string) (*UserPublic, 
 		CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
 	s.users[id] = user
-	s.save()
+	s.saveUser(user)
 
 	return &UserPublic{
 		ID:        user.ID,
@@ -171,7 +184,6 @@ func (s *UserService) UpdateUser(id, username, password, role string) (*UserPubl
 		return nil, fmt.Errorf("user not found")
 	}
 
-	// Check duplicate username (exclude self)
 	if username != "" && username != user.Username {
 		for _, u := range s.users {
 			if u.Username == username && u.ID != id {
@@ -193,7 +205,7 @@ func (s *UserService) UpdateUser(id, username, password, role string) (*UserPubl
 		user.Role = role
 	}
 
-	s.save()
+	s.saveUser(user)
 	return &UserPublic{
 		ID:        user.ID,
 		Username:  user.Username,
@@ -210,7 +222,6 @@ func (s *UserService) DeleteUser(id string) error {
 		return fmt.Errorf("user not found")
 	}
 
-	// Prevent deleting the last admin
 	adminCount := 0
 	for _, u := range s.users {
 		if u.Role == "admin" {
@@ -222,7 +233,7 @@ func (s *UserService) DeleteUser(id string) error {
 	}
 
 	delete(s.users, id)
-	s.save()
+	s.deleteUser(id)
 	return nil
 }
 

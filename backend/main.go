@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	routes "mc-manage-backend/src"
 	middleware "mc-manage-backend/src/middlewares"
@@ -9,41 +8,21 @@ import (
 	"mc-manage-backend/src/utils"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/joho/godotenv"
 )
 
 var logger = utils.NewLogger("mc-manage")
 
-// loadEnvFile reads a .env file and sets env vars that are not already set
-func loadEnvFile(path string) {
-	f, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if idx := strings.IndexByte(line, '='); idx >= 0 {
-			key := strings.TrimSpace(line[:idx])
-			val := strings.TrimSpace(line[idx+1:])
-			if os.Getenv(key) == "" {
-				os.Setenv(key, val)
-			}
-		}
-	}
-}
-
 func main() {
-	loadEnvFile(".env")
+	_ = godotenv.Load()
 	logger.Init("mc-manage")
+	db := utils.ConnectDB()
+	defer utils.DisconnectDB(db)
+
 	state := services.NewAppState()
 
 	app := fiber.New(fiber.Config{

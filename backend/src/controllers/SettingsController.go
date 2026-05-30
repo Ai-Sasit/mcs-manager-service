@@ -1,63 +1,74 @@
 package controllers
 
 import (
-	"encoding/json"
 	"mc-manage-backend/src/utils"
-	"os"
-	"path/filepath"
-	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AppSettings struct {
-	AppName         string `json:"app_name"`
-	DefaultRAM      int    `json:"default_ram"`
-	DiscordWebhook  string `json:"discord_webhook"`
-	TelemetryEnabled bool   `json:"telemetry_enabled"`
+	AppName          string `bson:"app_name" json:"app_name"`
+	DefaultRAM       int    `bson:"default_ram" json:"default_ram"`
+	DiscordWebhook   string `bson:"discord_webhook" json:"discord_webhook"`
+	TelemetryEnabled bool   `bson:"telemetry_enabled" json:"telemetry_enabled"`
 }
 
-var (
-	settings   AppSettings
-	settingsMu sync.RWMutex
-)
+type settingsDocument struct {
+	Key         string `bson:"key"`
+	AppSettings `bson:",inline"`
+}
 
-func init() {
-	// Root of data/ is where we store global settings
-	path := filepath.Join("data", "settings.json")
-	if b, err := os.ReadFile(path); err == nil {
-		json.Unmarshal(b, &settings)
-	} else {
-		// Defaults
-		settings = AppSettings{
-			AppName:    "MC Management Dashboard",
-			DefaultRAM: 2048,
-		}
+func defaultSettings() AppSettings {
+	return AppSettings{
+		AppName:    "MC Management Dashboard",
+		DefaultRAM: 2048,
 	}
 }
 
+func settingsCollection() *mongo.Collection {
+	return utils.GetCollection(utils.DB, "settings")
+}
+
+func loadSettings() AppSettings {
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+
+	var doc settingsDocument
+	err := settingsCollection().FindOne(ctx, bson.M{"key": "global"}).Decode(&doc)
+	if err != nil {
+		if err != mongo.ErrNoDocuments {
+			logger.Error("[Settings] Failed to load settings: "+err.Error(), nil)
+		}
+		return defaultSettings()
+	}
+	return doc.AppSettings
+}
+
 func GetSettings(c fiber.Ctx) error {
-	settingsMu.RLock()
-	defer settingsMu.RUnlock()
 	return c.JSON(fiber.Map{
 		"success": true,
-		"data":    settings,
+		"data":    loadSettings(),
 	})
 }
 
 func UpdateSettings(c fiber.Ctx) error {
-	settingsMu.Lock()
-	defer settingsMu.Unlock()
-
 	var newSettings AppSettings
 	if err := c.Bind().JSON(&newSettings); err != nil {
 		return utils.ErrorResponse(c, "Invalid request", fiber.StatusBadRequest)
 	}
 
-	settings = newSettings
-	path := filepath.Join("data", "settings.json")
-	data, _ := json.MarshalIndent(settings, "", "  ")
-	os.WriteFile(path, data, 0644)
+	ctx, cancel := utils.MongoContext(10 * time.Second)
+	defer cancel()
+
+	doc := settingsDocument{Key: "global", AppSettings: newSettings}
+	if _, err := settingsCollection().ReplaceOne(ctx, bson.M{"key": "global"}, doc, options.Replace().SetUpsert(true)); err != nil {
+		logger.Error("[Settings] Failed to save settings: "+err.Error(), nil)
+		return utils.ErrorResponse(c, "Failed to save settings", fiber.StatusInternalServerError)
+	}
 
 	utils.LogAudit("admin", "SETTINGS_UPDATE", "system", "Updated global application settings.")
 

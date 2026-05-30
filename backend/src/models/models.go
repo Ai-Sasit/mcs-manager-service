@@ -15,18 +15,18 @@ const (
 )
 
 type ServerConfig struct {
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	Edition    ServerEdition `json:"edition"`
-	ServerType string        `json:"server_type"`
-	Version    string        `json:"version"`
-	Port       uint16        `json:"port"`
-	MaxPlayers uint32        `json:"max_players"`
-	MemoryMB   uint32        `json:"memory_mb"`
-	Status     ServerStatus  `json:"status"`
-	Pid        int           `json:"pid,omitempty"`
-	CreatedAt  string        `json:"created_at"`
-	ServerDir  string        `json:"server_dir"`
+	ID         string        `bson:"id" json:"id"`
+	Name       string        `bson:"name" json:"name"`
+	Edition    ServerEdition `bson:"edition" json:"edition"`
+	ServerType string        `bson:"server_type" json:"server_type"`
+	Version    string        `bson:"version" json:"version"`
+	Port       uint16        `bson:"port" json:"port"`
+	MaxPlayers uint32        `bson:"max_players" json:"max_players"`
+	MemoryMB   uint32        `bson:"memory_mb" json:"memory_mb"`
+	Status     ServerStatus  `bson:"status" json:"status"`
+	Pid        int           `bson:"-" json:"pid,omitempty"`
+	CreatedAt  string        `bson:"created_at" json:"created_at"`
+	ServerDir  string        `bson:"server_dir" json:"server_dir"`
 }
 
 type VersionInfo struct {

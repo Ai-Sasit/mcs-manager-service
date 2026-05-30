@@ -1,0 +1,18 @@
+services:
+  mongo:
+    image: bitnami/mongodb:latest
+    restart: always
+    ports:
+      - ${MONGO_INITDB_PORT}:27017
+    environment:
+      MONGODB_ADVERTISED_HOSTNAME: mc-manage-db
+      MONGODB_REPLICA_SET_MODE: primary
+      MONGODB_REPLICA_SET_NAME: rs0
+      MONGODB_REPLICA_SET_KEY: mcmanage-replica-key
+      MONGODB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGODB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongodb:/bitnami/mongodb
+
+volumes:
+  mongodb:

@@ -98,11 +98,4 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	api.Get("/settings", controllers.GetSettings)
 	api.Put("/settings", controllers.UpdateSettings)
 
-	// UFW Firewall
-	api.Get("/ufw/status", controllers.GetUfwStatus)
-	api.Get("/ufw/rules", controllers.ListUfwRules)
-	api.Post("/ufw/allow", controllers.AllowUfwRule)
-	api.Post("/ufw/deny", controllers.DenyUfwRule)
-	api.Delete("/ufw/rules/:number", controllers.DeleteUfwRule)
-	api.Post("/ufw/toggle", controllers.ToggleUfw)
 }

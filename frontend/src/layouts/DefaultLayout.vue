@@ -116,13 +116,6 @@
             <span>Users</span>
           </router-link>
           <router-link
-            to="/firewall"
-            class="nav-item"
-            :class="{ active: route.name === 'firewall' }">
-            <el-icon size="18"><Lock /></el-icon>
-            <span>Firewall</span>
-          </router-link>
-          <router-link
             to="/settings"
             class="nav-item"
             :class="{ active: route.name === 'settings' }">
@@ -190,9 +183,8 @@ import {
   Setting,
   SwitchButton,
   Monitor,
-  Lock,
 } from "@element-plus/icons-vue";
-import { useAuthStore } from "../stores/auth";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -214,7 +206,6 @@ const pageTitle = computed(() => {
     "backend-logs": "Backend Logs",
     "port-monitor": "Port Monitor",
     users: "Users",
-    firewall: "Firewall",
     settings: "Settings",
   };
   return names[route.name] || "MC Manage";
