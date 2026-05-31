@@ -11,9 +11,10 @@ import (
 
 func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	controllers.Init(state)
+	middleware.SetTokenValidator(state.UserService.IsTokenValid)
 
 	// Public auth
-	app.Post("/api/auth/login", controllers.Login)
+	app.Post("/api/v1/auth/login", controllers.Login)
 
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("V.1.0.0")
@@ -37,9 +38,11 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	app.Get("/ws/backend-logs", controllers.WsBackendLogs)
 
 	// Protected API routes
-	api := app.Group("/api", middleware.AuthRequired)
+	api := app.Group("/api/v1", middleware.AuthRequired)
 
 	api.Get("/auth/me", controllers.GetMe)
+	api.Post("/auth/logout", controllers.Logout)
+	api.Put("/auth/me/password", controllers.ChangePassword)
 
 	// Server CRUD
 	api.Get("/servers", controllers.ListServers)

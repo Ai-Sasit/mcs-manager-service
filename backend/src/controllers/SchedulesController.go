@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"mc-manage-backend/src/services"
+	"mc-manage-backend/src/models"
 	"mc-manage-backend/src/utils"
 
 	"github.com/gofiber/fiber/v3"
@@ -10,15 +10,12 @@ import (
 // ListSchedules returns all configured schedules
 func ListSchedules(c fiber.Ctx) error {
 	list := state.Scheduler.ListSchedules()
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    list,
-	})
+	return utils.SuccessResponse(c, "OK", list)
 }
 
 // CreateSchedule adds a new automated task
 func CreateSchedule(c fiber.Ctx) error {
-	var entry services.ScheduleEntry
+	var entry models.ScheduleEntry
 	if err := c.Bind().JSON(&entry); err != nil {
 		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
 	}
@@ -35,11 +32,7 @@ func CreateSchedule(c fiber.Ctx) error {
 	}
 
 	utils.LogAudit("admin", "SCHEDULE_CREATE", entry.ServerID, "Created automated task: "+entry.Task)
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    entry,
-		"message": "Task scheduled",
-	})
+	return utils.SuccessResponse(c, "Task scheduled", entry, fiber.StatusCreated)
 }
 
 // DeleteSchedule removes a task
@@ -47,10 +40,7 @@ func DeleteSchedule(c fiber.Ctx) error {
 	id := c.Params("id")
 	state.Scheduler.DeleteSchedule(id)
 	utils.LogAudit("admin", "SCHEDULE_DELETE", "system", "Deleted schedule: "+id)
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Deleted",
-	})
+	return utils.SuccessResponse(c, "Deleted", nil)
 }
 
 // ToggleSchedule enables or disables a task
@@ -68,5 +58,5 @@ func ToggleSchedule(c fiber.Ctx) error {
 	}
 
 	utils.LogAudit("admin", "SCHEDULE_TOGGLE", "system", "Schedule toggled: "+id)
-	return c.JSON(fiber.Map{"success": true})
+	return utils.SuccessResponse(c, "OK", nil)
 }

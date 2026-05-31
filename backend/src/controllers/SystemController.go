@@ -18,30 +18,22 @@ func GetSystemInfo(c fiber.Ctx) error {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data": fiber.Map{
-			"os":            runtime.GOOS,
-			"arch":          runtime.GOARCH,
-			"go_version":    runtime.Version(),
-			"goroutines":    runtime.NumGoroutine(),
-			"cpu_count":     runtime.NumCPU(),
-			"mem_alloc_mb":  mem.Alloc / 1024 / 1024,
-			"mem_sys_mb":    mem.Sys / 1024 / 1024,
-			"mem_gc_cycles": mem.NumGC,
-		},
-		"message": "OK",
+	return utils.SuccessResponse(c, "OK", fiber.Map{
+		"os":            runtime.GOOS,
+		"arch":          runtime.GOARCH,
+		"go_version":    runtime.Version(),
+		"goroutines":    runtime.NumGoroutine(),
+		"cpu_count":     runtime.NumCPU(),
+		"mem_alloc_mb":  mem.Alloc / 1024 / 1024,
+		"mem_sys_mb":    mem.Sys / 1024 / 1024,
+		"mem_gc_cycles": mem.NumGC,
 	})
 }
 
 // GetAuditLogs returns audit log entries
 func GetAuditLogs(c fiber.Ctx) error {
 	logs := utils.GetAuditLogs()
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    logs,
-		"message": "OK",
-	})
+	return utils.SuccessResponse(c, "OK", logs)
 }
 
 // ListBackendLogFiles returns available backend log file names (newest first)
@@ -58,7 +50,7 @@ func ListBackendLogFiles(c fiber.Ctx) error {
 	}
 	// Sort descending (newest date first)
 	sort.Slice(files, func(i, j int) bool { return files[i] > files[j] })
-	return c.JSON(fiber.Map{"success": true, "data": files})
+	return utils.SuccessResponse(c, "OK", files)
 }
 
 // GetBackendLogFile returns the lines of a specific backend log file.
@@ -112,7 +104,7 @@ func GetBackendLogFile(c fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{"success": true, "data": lines})
+	return utils.SuccessResponse(c, "OK", lines)
 }
 
 // LookupPort finds a process by its listening port
@@ -132,11 +124,7 @@ func LookupPort(c fiber.Ctx) error {
 		return utils.ErrorResponse(c, err.Error(), fiber.StatusNotFound)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    info,
-		"message": "OK",
-	})
+	return utils.SuccessResponse(c, "OK", info)
 }
 
 // KillPid force kills a process by PID
@@ -157,8 +145,5 @@ func KillPid(c fiber.Ctx) error {
 	}
 
 	utils.LogAudit("admin", "SYSTEM_KILL_PID", strconv.Itoa(req.Pid), "Force killed system process.")
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Process terminated",
-	})
+	return utils.SuccessResponse(c, "Process terminated", nil)
 }

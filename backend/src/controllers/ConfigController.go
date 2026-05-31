@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"mc-manage-backend/src/interfaces"
 	"mc-manage-backend/src/utils"
 	"os"
 	"path/filepath"
@@ -27,22 +26,14 @@ func GetConfig(c fiber.Ctx) error {
 			os.WriteFile(propPath, []byte(defaultProps), 0644)
 			config := parseProperties(defaultProps)
 			logger.Info("[GetConfig] Created default config for server="+id, nil)
-			return c.JSON(interfaces.ApiResponse{
-				Success: true,
-				Data:    config,
-				Message: "OK",
-			})
+			return utils.SuccessResponse(c, "OK", config)
 		}
 		return utils.ErrorResponse(c, "Failed to read config file", fiber.StatusInternalServerError)
 	}
 
 	config := parseProperties(string(data))
 	logger.Info("[GetConfig] Read config for server="+id, nil)
-	return c.JSON(interfaces.ApiResponse{
-		Success: true,
-		Data:    config,
-		Message: "OK",
-	})
+	return utils.SuccessResponse(c, "OK", config)
 }
 
 func UpdateConfig(c fiber.Ctx) error {
@@ -65,11 +56,7 @@ func UpdateConfig(c fiber.Ctx) error {
 	}
 
 	logger.Info("[UpdateConfig] Updated config for server="+id, nil)
-	return c.JSON(interfaces.ApiResponse{
-		Success: true,
-		Data:    config,
-		Message: "Config updated",
-	})
+	return utils.SuccessResponse(c, "Config updated", config)
 }
 
 func parseProperties(content string) map[string]string {

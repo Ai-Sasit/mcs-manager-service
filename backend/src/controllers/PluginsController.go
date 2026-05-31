@@ -18,10 +18,7 @@ func ListPlugins(c fiber.Ctx) error {
 	if err != nil {
 		return utils.ErrorResponse(c, err.Error(), fiber.StatusNotFound)
 	}
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    plugins,
-	})
+	return utils.SuccessResponse(c, "OK", plugins)
 }
 
 // UploadPlugin handles plugin file upload
@@ -64,7 +61,7 @@ func UploadPlugin(c fiber.Ctx) error {
 	}
 
 	utils.LogAudit("admin", "PLUGIN_UPLOAD", id, "Uploaded plugin: "+filename)
-	return c.JSON(fiber.Map{"success": true, "message": "Plugin uploaded"})
+	return utils.SuccessResponse(c, "Plugin uploaded", nil)
 }
 
 // DeletePlugin removes a plugin file
@@ -75,5 +72,5 @@ func DeletePlugin(c fiber.Ctx) error {
 		return utils.ErrorResponse(c, err.Error(), fiber.StatusNotFound)
 	}
 	utils.LogAudit("admin", "PLUGIN_DELETE", id, "Deleted plugin: "+name)
-	return c.JSON(fiber.Map{"success": true, "message": "Deleted"})
+	return utils.SuccessResponse(c, "Deleted", nil)
 }

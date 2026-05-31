@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -123,7 +122,7 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		MaxPlayers: maxPlayers,
 		MemoryMB:   memoryMB,
 		Status:     models.StatusStopped,
-		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		CreatedAt:  utils.NowISO(),
 		ServerDir:  serverDir,
 	}
 

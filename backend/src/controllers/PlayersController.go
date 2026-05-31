@@ -79,10 +79,7 @@ func GetPlayers(c fiber.Ctx) error {
 		result = append(result, p)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    result,
-	})
+	return utils.SuccessResponse(c, "OK", result)
 }
 
 type UpdatePlayerReq struct {
@@ -139,5 +136,5 @@ func UpdatePlayer(c fiber.Ctx) error {
 		utils.LogAudit("admin", "PLAYER_UPDATE", id, "Executed: "+cmdStr)
 	}
 
-	return c.JSON(fiber.Map{"success": true})
+	return utils.SuccessResponse(c, "OK", nil)
 }

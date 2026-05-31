@@ -1,7 +1,9 @@
 package services
 
 import (
+	"context"
 	"fmt"
+	"mc-manage-backend/src/models"
 	"mc-manage-backend/src/utils"
 	"os"
 	"path/filepath"
@@ -14,20 +16,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-type ScheduleEntry struct {
-	ID       string       `bson:"id" json:"id"`
-	ServerID string       `bson:"server_id" json:"server_id"`
-	Task     string       `bson:"task" json:"task"`       // "backup", "restart", "command"
-	Cron     string       `bson:"cron" json:"cron"`       // e.g. "0 0 * * *"
-	Command  string       `bson:"command" json:"command"` // Only for task="command"
-	Enabled  bool         `bson:"enabled" json:"enabled"`
-	EntryID  cron.EntryID `bson:"-" json:"-"`
-}
-
 type SchedulerService struct {
 	mu      sync.RWMutex
 	cron    *cron.Cron
-	entries map[string]*ScheduleEntry
+	entries map[string]*models.ScheduleEntry
 	state   *AppState
 	col     *mongo.Collection
 }
@@ -35,7 +27,7 @@ type SchedulerService struct {
 func NewSchedulerService(state *AppState) *SchedulerService {
 	s := &SchedulerService{
 		cron:    cron.New(),
-		entries: make(map[string]*ScheduleEntry),
+		entries: make(map[string]*models.ScheduleEntry),
 		state:   state,
 		col:     utils.GetCollection(utils.DB, "schedules"),
 	}
@@ -45,7 +37,7 @@ func NewSchedulerService(state *AppState) *SchedulerService {
 }
 
 func (s *SchedulerService) loadEntries() {
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cursor, err := s.col.Find(ctx, bson.M{})
@@ -55,7 +47,7 @@ func (s *SchedulerService) loadEntries() {
 	}
 	defer cursor.Close(ctx)
 
-	var saved []ScheduleEntry
+	var saved []models.ScheduleEntry
 	if err := cursor.All(ctx, &saved); err != nil {
 		logger.Error("[SchedulerService] Failed to decode schedules from MongoDB: "+err.Error(), nil)
 		return
@@ -71,8 +63,8 @@ func (s *SchedulerService) loadEntries() {
 	}
 }
 
-func (s *SchedulerService) saveEntry(e *ScheduleEntry) {
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+func (s *SchedulerService) saveEntry(e *models.ScheduleEntry) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := s.col.ReplaceOne(ctx, bson.M{"id": e.ID}, e, options.Replace().SetUpsert(true)); err != nil {
 		logger.Error("[SchedulerService] Failed to save schedule "+e.ID+": "+err.Error(), nil)
@@ -80,14 +72,14 @@ func (s *SchedulerService) saveEntry(e *ScheduleEntry) {
 }
 
 func (s *SchedulerService) deleteEntry(id string) {
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := s.col.DeleteOne(ctx, bson.M{"id": id}); err != nil {
 		logger.Error("[SchedulerService] Failed to delete schedule "+id+": "+err.Error(), nil)
 	}
 }
 
-func (s *SchedulerService) registerSchedule(e *ScheduleEntry) error {
+func (s *SchedulerService) registerSchedule(e *models.ScheduleEntry) error {
 	if !e.Enabled {
 		return nil
 	}
@@ -101,7 +93,7 @@ func (s *SchedulerService) registerSchedule(e *ScheduleEntry) error {
 	return nil
 }
 
-func (s *SchedulerService) AddSchedule(e *ScheduleEntry) error {
+func (s *SchedulerService) AddSchedule(e *models.ScheduleEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -156,7 +148,7 @@ func (s *SchedulerService) ToggleSchedule(id string, enabled bool) error {
 	return nil
 }
 
-func (s *SchedulerService) runTask(e *ScheduleEntry) {
+func (s *SchedulerService) runTask(e *models.ScheduleEntry) {
 	utils.LogAudit("system", "SCHEDULE_TASK_START", e.ServerID, fmt.Sprintf("Running task: %s", e.Task))
 
 	switch e.Task {
@@ -180,11 +172,11 @@ func (s *SchedulerService) runTask(e *ScheduleEntry) {
 	}
 }
 
-func (s *SchedulerService) ListSchedules() []ScheduleEntry {
+func (s *SchedulerService) ListSchedules() []models.ScheduleEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var list []ScheduleEntry
+	var list []models.ScheduleEntry
 	for _, e := range s.entries {
 		list = append(list, *e)
 	}

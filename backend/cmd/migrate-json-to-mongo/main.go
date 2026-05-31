@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"mc-manage-backend/src/models"
-	"mc-manage-backend/src/services"
 	"mc-manage-backend/src/utils"
 	"os"
 	"path/filepath"
@@ -61,7 +61,7 @@ func readJSON(path string, out any) bool {
 }
 
 func upsertByID(col *mongo.Collection, id string, doc any) error {
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err := col.ReplaceOne(ctx, bson.M{"id": id}, doc, options.Replace().SetUpsert(true))
 	return err
@@ -89,7 +89,7 @@ func importServers(db *mongo.Client, path string) {
 }
 
 func importUsers(db *mongo.Client, path string) {
-	users := map[string]*services.User{}
+	users := map[string]*models.User{}
 	if !readJSON(path, &users) {
 		return
 	}
@@ -109,7 +109,7 @@ func importUsers(db *mongo.Client, path string) {
 }
 
 func importSchedules(db *mongo.Client, path string) {
-	var schedules []services.ScheduleEntry
+	var schedules []models.ScheduleEntry
 	if !readJSON(path, &schedules) {
 		return
 	}
@@ -133,7 +133,7 @@ func importSettings(db *mongo.Client, path string) {
 	if !readJSON(path, &settings) {
 		return
 	}
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	doc := settingsDocument{Key: "global", appSettings: settings}
 	_, err := utils.GetCollection(db, "settings").ReplaceOne(ctx, bson.M{"key": "global"}, doc, options.Replace().SetUpsert(true))
@@ -145,7 +145,7 @@ func importSettings(db *mongo.Client, path string) {
 }
 
 func importAuditLogs(db *mongo.Client, path string) {
-	var logs []utils.AuditLog
+	var logs []models.AuditLog
 	if !readJSON(path, &logs) {
 		return
 	}

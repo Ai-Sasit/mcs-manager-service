@@ -10,12 +10,21 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/joho/godotenv"
 )
 
 var logger = utils.NewLogger("mc-manage")
+
+type structValidator struct {
+	validate *validator.Validate
+}
+
+func (v *structValidator) Validate(out any) error {
+	return v.validate.Struct(out)
+}
 
 func main() {
 	_ = godotenv.Load()
@@ -26,7 +35,8 @@ func main() {
 	state := services.NewAppState()
 
 	app := fiber.New(fiber.Config{
-		BodyLimit: 1024 * 1024 * 100, // 100MB for server jar uploads
+		BodyLimit:       1024 * 1024 * 100, // 100MB for server jar uploads
+		StructValidator: &structValidator{validate: validator.New()},
 	})
 
 	app.Use(cors.New(cors.Config{

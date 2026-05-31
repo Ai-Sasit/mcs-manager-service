@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mc-manage-backend/src/models"
@@ -18,8 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-var logger = utils.NewLogger("mc-manage")
 
 // logWriter implements io.Writer and publishes lines to a LogBroker
 type logWriter struct {
@@ -80,7 +79,7 @@ func NewAppState() *AppState {
 }
 
 func (s *AppState) loadServers() {
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cursor, err := s.serversCol.Find(ctx, bson.M{})
@@ -108,7 +107,7 @@ func (s *AppState) Save() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	upsert := options.Replace().SetUpsert(true)
 	for _, srv := range s.Servers {
@@ -151,7 +150,7 @@ func (s *AppState) AddServer(config *models.ServerConfig) {
 	s.mu.Lock()
 	s.Servers[config.ID] = config
 	s.mu.Unlock()
-	ctx, cancel := utils.MongoContext(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := s.serversCol.ReplaceOne(ctx, bson.M{"id": config.ID}, config, options.Replace().SetUpsert(true)); err != nil {
 		logger.Error("[AppState] Failed to add server "+config.ID+": "+err.Error(), nil)
@@ -166,7 +165,7 @@ func (s *AppState) RemoveServer(id string) (*models.ServerConfig, bool) {
 	}
 	s.mu.Unlock()
 	if ok {
-		ctx, cancel := utils.MongoContext(10 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if _, err := s.serversCol.DeleteOne(ctx, bson.M{"id": id}); err != nil {
 			logger.Error("[AppState] Failed to remove server "+id+": "+err.Error(), nil)

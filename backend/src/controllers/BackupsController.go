@@ -43,10 +43,7 @@ func ListBackups(c fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    backups,
-	})
+	return utils.SuccessResponse(c, "OK", backups)
 }
 
 // CreateBackup creates a new zip backup of the server directory
@@ -74,10 +71,7 @@ func CreateBackup(c fiber.Ctx) error {
 		utils.LogAudit("system", "BACKUP_SUCCESS", id, "Backup completed: "+backupName)
 	}()
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Backup task started in background",
-	})
+	return utils.SuccessResponse(c, "Backup task started in background", nil)
 }
 
 // DeleteBackup removes a backup file
@@ -91,5 +85,5 @@ func DeleteBackup(c fiber.Ctx) error {
 	}
 
 	utils.LogAudit("admin", "BACKUP_DELETE", id, "Deleted backup: "+name)
-	return c.JSON(fiber.Map{"success": true, "message": "Backup deleted"})
+	return utils.SuccessResponse(c, "Backup deleted", nil)
 }

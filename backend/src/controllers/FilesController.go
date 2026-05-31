@@ -58,10 +58,7 @@ func ListFiles(c fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    nodes,
-	})
+	return utils.SuccessResponse(c, "OK", nodes)
 }
 
 // ReadFile outputs the content of a file
@@ -79,10 +76,7 @@ func ReadFile(c fiber.Ctx) error {
 		return utils.ErrorResponse(c, readErr.Error(), fiber.StatusInternalServerError)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    string(data),
-	})
+	return utils.SuccessResponse(c, "OK", string(data))
 }
 
 // WriteFileReq represents a file write update
@@ -110,5 +104,5 @@ func WriteFile(c fiber.Ctx) error {
 	}
 	utils.LogAudit("admin", "FILE_UPDATED", id, "Updated file: "+filePath)
 
-	return c.JSON(fiber.Map{"success": true, "message": "File saved"})
+	return utils.SuccessResponse(c, "File saved", nil)
 }
