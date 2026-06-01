@@ -89,6 +89,12 @@ const routes = [
     meta: { requiresAuth: true, roles: [ROLES.ADMIN] },
   },
   {
+    path: "/resources",
+    name: "resources",
+    component: () => import("@/views/admin/ResourceMonitorView.vue"),
+    meta: { requiresAuth: true, roles: [ROLES.ADMIN] },
+  },
+  {
     path: "/port-monitor",
     name: "port-monitor",
     component: () => import("@/views/admin/PortMonitorView.vue"),

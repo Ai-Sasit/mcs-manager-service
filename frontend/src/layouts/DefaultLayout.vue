@@ -102,6 +102,13 @@
             <span>Backend Logs</span>
           </router-link>
           <router-link
+            to="/resources"
+            class="nav-item"
+            :class="{ active: route.name === 'resources' }">
+            <el-icon size="18"><Cpu /></el-icon>
+            <span>Resources</span>
+          </router-link>
+          <router-link
             to="/port-monitor"
             class="nav-item"
             :class="{ active: route.name === 'port-monitor' }">
@@ -204,6 +211,7 @@ const pageTitle = computed(() => {
     integrations: "Integrations",
     "audit-logs": "Audit Logs",
     "backend-logs": "Backend Logs",
+    resources: "Resources",
     "port-monitor": "Port Monitor",
     users: "Users",
     settings: "Settings",

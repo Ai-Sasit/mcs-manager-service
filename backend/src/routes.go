@@ -37,6 +37,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	app.Get("/ws/servers/:id/terminal", controllers.WsTerminal)
 	app.Get("/ws/server-setup/:job_id", controllers.WsServerSetup)
 	app.Get("/ws/backend-logs", controllers.WsBackendLogs)
+	app.Get("/ws/system/resources", controllers.WsSystemResources)
 
 	// Protected API routes
 	api := app.Group("/api/v1", middleware.AuthRequired)

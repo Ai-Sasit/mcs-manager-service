@@ -62,13 +62,15 @@
           </div>
         </div>
         <div class="stat-main">
-          <div class="stat-value">{{ mockCpu }}%</div>
-          <div class="stat-badge warning">Optimal</div>
+          <div class="stat-value">{{ nodeLoadDisplay }}</div>
+          <div class="stat-badge" :class="nodeLoadBadgeClass">
+            {{ nodeLoadLabel }}
+          </div>
         </div>
         <div class="stat-progress-bg">
           <div
             class="stat-progress-bar warning"
-            :style="{ width: mockCpu + '%' }"
+            :style="{ width: nodeLoadPercentage + '%' }"
           ></div>
         </div>
       </div>
@@ -154,8 +156,13 @@
         <div class="widget-container glass-card resource-widget">
           <div class="widget-header">
             <h4>Resources</h4>
-            <el-tag size="small" type="success" effect="dark" round
-              >HEALTHY</el-tag
+            <el-tag
+              size="small"
+              :type="resourceTagType"
+              effect="dark"
+              round
+              :title="resourceError"
+              >{{ resourceStateText }}</el-tag
             >
           </div>
           <div class="resource-meters">
@@ -174,10 +181,10 @@
             <div class="meter-item">
               <div class="meter-labels">
                 <span>CPU overhead</span>
-                <span>{{ mockCpu }}%</span>
+                <span>{{ nodeLoadPercentage }}%</span>
               </div>
               <el-progress
-                :percentage="mockCpu"
+                :percentage="nodeLoadPercentage"
                 :show-text="false"
                 stroke-width="8"
                 :color="cpuColors"
@@ -215,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { ElMessage } from "element-plus";
 import {
   Plus,
@@ -231,6 +238,7 @@ import { useServersStore } from "@/stores/servers";
 import apiClient from "@/api/client";
 import ServerCard from "@/components/servers/ServerCard.vue";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
+import { useSystemResources } from "@/composables/useSystemResources";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
@@ -238,13 +246,19 @@ const showCreate = ref(false);
 const logs = ref([]);
 const loadingLogs = ref(false);
 const filterEdition = ref("all");
+const resources = useSystemResources();
 
-const mockCpu = ref(Math.floor(Math.random() * 15) + 3);
 const cpuColors = [
   { color: "#10b981", percentage: 20 },
   { color: "#e6a23c", percentage: 40 },
   { color: "#f56c6c", percentage: 80 },
 ];
+
+function clampPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(Math.max(Math.round(number), 0), 100);
+}
 
 const filteredServers = computed(() => {
   if (filterEdition.value === "all") return store.servers;
@@ -263,14 +277,35 @@ const activePercentage = computed(() => {
   return Math.round((store.runningCount / store.servers.length) * 100);
 });
 
-const ramPercentage = computed(() => {
-  if (store.servers.length === 0) return 10;
-  const totalUsed = store.servers.reduce(
-    (acc, s) => (s.status === "running" ? acc + (s.memory_mb || 0) : acc),
-    0,
-  );
-  const max = 16384;
-  return Math.min(Math.round((totalUsed / max) * 100), 100);
+const nodeMetrics = computed(() => resources.snapshot.value?.node || {});
+const nodeLoadPercentage = computed(() => clampPercent(nodeMetrics.value.cpu_percent));
+const nodeLoadDisplay = computed(() =>
+  resources.snapshot.value ? `${nodeLoadPercentage.value}%` : "—",
+);
+const ramPercentage = computed(() => clampPercent(nodeMetrics.value.memory_percent));
+const resourceError = computed(() => resources.error.value || "");
+
+const nodeLoadLabel = computed(() => {
+  if (resources.state.value !== "open") return resources.state.value;
+  if (nodeLoadPercentage.value >= 80) return "High";
+  if (nodeLoadPercentage.value >= 50) return "Busy";
+  return "Optimal";
+});
+
+const nodeLoadBadgeClass = computed(() => {
+  if (nodeLoadPercentage.value >= 80) return "danger";
+  return "warning";
+});
+
+const resourceTagType = computed(() => {
+  if (resources.state.value === "open") return "success";
+  if (resources.state.value === "error") return "danger";
+  return "warning";
+});
+
+const resourceStateText = computed(() => {
+  if (resources.state.value === "open") return "HEALTHY";
+  return resources.state.value.toUpperCase();
 });
 
 async function fetchLogs() {
@@ -288,7 +323,6 @@ async function fetchLogs() {
 async function refreshAll() {
   await store.fetchServers();
   await fetchLogs();
-  mockCpu.value = Math.floor(Math.random() * 15) + 3;
 }
 
 async function handleStart(id) {
@@ -332,6 +366,11 @@ function getActionClass(action) {
 onMounted(() => {
   store.fetchServers();
   fetchLogs();
+  resources.connect();
+});
+
+onUnmounted(() => {
+  resources.disconnect();
 });
 </script>
 
@@ -443,6 +482,10 @@ onMounted(() => {
 .stat-badge.warning {
   background: rgba(245, 158, 11, 0.15);
   color: #d97706;
+}
+.stat-badge.danger {
+  background: rgba(245, 108, 108, 0.15);
+  color: #dc2626;
 }
 
 .stat-progress-bg {

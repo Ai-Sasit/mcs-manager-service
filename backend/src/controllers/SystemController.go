@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"bufio"
+	"mc-manage-backend/src/services"
 	"mc-manage-backend/src/utils"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,19 +15,11 @@ import (
 
 // GetSystemInfo returns basic system/runtime information
 func GetSystemInfo(c fiber.Ctx) error {
-	var mem runtime.MemStats
-	runtime.ReadMemStats(&mem)
-
-	return utils.SuccessResponse(c, "OK", fiber.Map{
-		"os":            runtime.GOOS,
-		"arch":          runtime.GOARCH,
-		"go_version":    runtime.Version(),
-		"goroutines":    runtime.NumGoroutine(),
-		"cpu_count":     runtime.NumCPU(),
-		"mem_alloc_mb":  mem.Alloc / 1024 / 1024,
-		"mem_sys_mb":    mem.Sys / 1024 / 1024,
-		"mem_gc_cycles": mem.NumGC,
-	})
+	snapshot, err := services.CollectResourceSnapshot(state)
+	if err != nil {
+		return utils.ErrorResponse(c, "failed to collect system info: "+err.Error(), fiber.StatusInternalServerError)
+	}
+	return utils.SuccessResponse(c, "OK", snapshot)
 }
 
 // GetAuditLogs returns audit log entries

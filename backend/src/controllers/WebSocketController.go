@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"encoding/json"
+	"mc-manage-backend/src/services"
 	"mc-manage-backend/src/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	ws "github.com/fasthttp/websocket"
 	"github.com/gofiber/fiber/v3"
@@ -20,6 +22,12 @@ var upgrader = ws.FastHTTPUpgrader{
 type terminalCommandMessage struct {
 	Type string `json:"type"`
 	Data string `json:"data"`
+}
+
+type resourceSnapshotMessage struct {
+	Type string                    `json:"type"`
+	Ts   string                    `json:"ts"`
+	Data services.ResourceSnapshot `json:"data"`
 }
 
 // WsLogs streams server stdout/stderr to a WebSocket client
@@ -244,6 +252,70 @@ func WsServerSetup(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsServerSetup] Upgrade failed job="+jobID+": "+err.Error(), nil)
+		return nil
+	}
+	return nil
+}
+
+func WsSystemResources(c fiber.Ctx) error {
+	if err := ensureWebSocketUpgrade(c); err != nil {
+		return err
+	}
+	logger.Info("[WsSystemResources] Client connected", nil)
+
+	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+		defer conn.Close()
+		client := newWSClient(conn)
+		ticker := time.NewTicker(2 * time.Second)
+		defer func() {
+			ticker.Stop()
+			client.close()
+			logger.Info("[WsSystemResources] Client disconnected", nil)
+		}()
+
+		go func() {
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					client.close()
+					return
+				}
+			}
+		}()
+
+		sendSnapshot := func() bool {
+			snapshot, err := services.CollectResourceSnapshot(state)
+			if err != nil {
+				return client.sendEnvelope("error", "Failed to collect resource snapshot: "+err.Error())
+			}
+			payload, err := json.Marshal(resourceSnapshotMessage{
+				Type: "resource_snapshot",
+				Ts:   time.Now().Format(time.RFC3339),
+				Data: snapshot,
+			})
+			if err != nil {
+				return false
+			}
+			return client.send(payload)
+		}
+
+		if !sendSnapshot() {
+			return
+		}
+
+		for {
+			select {
+			case <-ticker.C:
+				if !sendSnapshot() {
+					return
+				}
+			case <-client.done:
+				return
+			}
+		}
+	})
+
+	if err != nil {
+		logger.Error("[WsSystemResources] Upgrade failed: "+err.Error(), nil)
 		return nil
 	}
 	return nil
