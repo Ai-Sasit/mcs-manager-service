@@ -14,13 +14,15 @@
         :model="form"
         :rules="rules"
         label-position="top"
-        @submit.prevent="handleLogin">
+        @submit.prevent="handleLogin"
+      >
         <el-form-item label="Username" prop="username">
           <el-input
             v-model="form.username"
             placeholder="Enter username"
             size="large"
-            clearable />
+            clearable
+          />
         </el-form-item>
         <el-form-item label="Password" prop="password">
           <el-input
@@ -29,7 +31,8 @@
             placeholder="Enter password"
             size="large"
             show-password
-            @keyup.enter="handleLogin" />
+            @keyup.enter="handleLogin"
+          />
         </el-form-item>
         <el-alert
           v-if="error"
@@ -37,20 +40,20 @@
           type="error"
           show-icon
           :closable="false"
-          style="margin-bottom: 20px" />
+          style="margin-bottom: 20px"
+        />
         <el-button
           type="primary"
           size="large"
           class="login-btn"
           :loading="loading"
-          @click="handleLogin">
+          @click="handleLogin"
+        >
           Sign In
         </el-button>
       </el-form>
-      
-      <div class="login-footer">
-        Secure Access Only
-      </div>
+
+      <div class="login-footer">Secure Access Only</div>
       <div class="desc-footer">
         <p>Version 1.0.0</p>
       </div>

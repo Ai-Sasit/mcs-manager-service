@@ -19,7 +19,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function login(user, pass) {
     const res = await apiClient.post("/auth/login", { username: user, password: pass });
-    if (!res.data || !res.data.success || !res.data.data) {
+    if (!res.data || res.data.status !== "ok" || !res.data.data) {
       throw new Error(res.data?.message || "Login failed");
     }
     const payload = res.data.data;

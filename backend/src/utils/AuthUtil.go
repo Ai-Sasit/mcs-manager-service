@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -37,8 +38,9 @@ func HashPassword(password string) (string, error) {
 // Returns an error if the password is wrong, the hash format is unrecognised,
 // or the stored hash is the old bcrypt format (prompts reset).
 func CheckPasswordHash(password, encoded string) error {
+	// Support legacy bcrypt hashes from older versions of the application.
 	if strings.HasPrefix(encoded, "$2a$") || strings.HasPrefix(encoded, "$2b$") {
-		return fmt.Errorf("password reset required: please contact an admin to reset your password")
+		return bcrypt.CompareHashAndPassword([]byte(encoded), []byte(password))
 	}
 
 	parts := strings.Split(encoded, "$")
