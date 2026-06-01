@@ -192,19 +192,47 @@ const chartOption = computed(() => ({
   ],
 }));
 
-// Watch for chart option changes and update chart
+// Watch for chart option changes and update chart incrementally
 watch(
-  chartOption,
-  (newOption) => {
-    if (chartRef.value) {
-      chartRef.value.setOption(newOption, {
-        notMerge: true, // Don't merge, replace the data
-        replaceMerge: ["series"], // Only replace series data
-        lazyUpdate: false,
+  () => props.data,
+  (newData, oldData) => {
+    if (chartRef.value && chartRef.value.chart) {
+      // If data length changed, update the entire chart
+      if (!oldData || newData.length !== oldData.length) {
+        chartRef.value.setOption(
+          {
+            xAxis: {
+              data: props.timeLabels,
+            },
+            series: [
+              {
+                data: newData,
+              },
+            ],
+          },
+          {
+            replaceMerge: ["xAxis", "series"],
+          },
+        );
+      }
+    }
+  },
+  { deep: false },
+);
+
+// Watch for time labels changes
+watch(
+  () => props.timeLabels,
+  (newLabels) => {
+    if (chartRef.value && chartRef.value.chart) {
+      chartRef.value.setOption({
+        xAxis: {
+          data: newLabels,
+        },
       });
     }
   },
-  { deep: true },
+  { deep: false },
 );
 </script>
 

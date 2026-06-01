@@ -15,21 +15,24 @@
           <router-link
             to="/"
             class="nav-item"
-            :class="{ active: route.name === 'dashboard' }">
+            :class="{ active: route.name === 'dashboard' }"
+          >
             <el-icon size="18"><Grid /></el-icon>
             <span>Dashboard</span>
           </router-link>
           <router-link
             to="/servers"
             class="nav-item"
-            :class="{ active: route.name === 'servers' }">
+            :class="{ active: route.name === 'servers' }"
+          >
             <el-icon size="18"><List /></el-icon>
             <span>Servers</span>
           </router-link>
           <router-link
             to="/players"
             class="nav-item"
-            :class="{ active: route.name === 'players' }">
+            :class="{ active: route.name === 'players' }"
+          >
             <el-icon size="18"><UserFilled /></el-icon>
             <span>Players</span>
           </router-link>
@@ -40,28 +43,32 @@
           <router-link
             to="/files"
             class="nav-item"
-            :class="{ active: route.name === 'files' }">
+            :class="{ active: route.name === 'files' }"
+          >
             <el-icon size="18"><Folder /></el-icon>
             <span>Files</span>
           </router-link>
           <router-link
             to="/console"
             class="nav-item"
-            :class="{ active: route.name === 'console' }">
+            :class="{ active: route.name === 'console' }"
+          >
             <el-icon size="18"><Cpu /></el-icon>
             <span>Console</span>
           </router-link>
           <router-link
             to="/backups"
             class="nav-item"
-            :class="{ active: route.name === 'backups' }">
+            :class="{ active: route.name === 'backups' }"
+          >
             <el-icon size="18"><Refresh /></el-icon>
             <span>Backups</span>
           </router-link>
           <router-link
             to="/schedules"
             class="nav-item"
-            :class="{ active: route.name === 'schedules' }">
+            :class="{ active: route.name === 'schedules' }"
+          >
             <el-icon size="18"><Calendar /></el-icon>
             <span>Schedules</span>
           </router-link>
@@ -72,14 +79,16 @@
           <router-link
             to="/plugins"
             class="nav-item"
-            :class="{ active: route.name === 'plugins' }">
+            :class="{ active: route.name === 'plugins' }"
+          >
             <el-icon size="18"><Connection /></el-icon>
             <span>Plugins</span>
           </router-link>
           <router-link
             to="/integrations"
             class="nav-item"
-            :class="{ active: route.name === 'integrations' }">
+            :class="{ active: route.name === 'integrations' }"
+          >
             <el-icon size="18"><Link /></el-icon>
             <span>Integrations</span>
           </router-link>
@@ -90,42 +99,41 @@
           <router-link
             to="/audit-logs"
             class="nav-item"
-            :class="{ active: route.name === 'audit-logs' }">
+            :class="{ active: route.name === 'audit-logs' }"
+          >
             <el-icon size="18"><DocumentCopy /></el-icon>
             <span>Audit Logs</span>
           </router-link>
           <router-link
             to="/backend-logs"
             class="nav-item"
-            :class="{ active: route.name === 'backend-logs' }">
+            :class="{ active: route.name === 'backend-logs' }"
+          >
             <el-icon size="18"><Document /></el-icon>
             <span>Backend Logs</span>
           </router-link>
           <router-link
             to="/resources"
             class="nav-item"
-            :class="{ active: route.name === 'resources' }">
+            :class="{ active: route.name === 'resources' }"
+          >
             <el-icon size="18"><Cpu /></el-icon>
             <span>Resources</span>
           </router-link>
-          <router-link
-            to="/port-monitor"
-            class="nav-item"
-            :class="{ active: route.name === 'port-monitor' }">
-            <el-icon size="18"><Odometer /></el-icon>
-            <span>Port Monitor</span>
-          </router-link>
+
           <router-link
             to="/users"
             class="nav-item"
-            :class="{ active: route.name === 'users' }">
+            :class="{ active: route.name === 'users' }"
+          >
             <el-icon size="18"><User /></el-icon>
             <span>Users</span>
           </router-link>
           <router-link
             to="/settings"
             class="nav-item"
-            :class="{ active: route.name === 'settings' }">
+            :class="{ active: route.name === 'settings' }"
+          >
             <el-icon size="18"><Setting /></el-icon>
             <span>Settings</span>
           </router-link>
