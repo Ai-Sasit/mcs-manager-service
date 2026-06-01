@@ -15,6 +15,7 @@ export function useReliableWebSocket(urlFactory, options = {}) {
 
   const state = ref("idle");
   const error = ref("");
+  const lastUrl = ref("");
   const isOpen = computed(() => state.value === "open");
 
   function setState(nextState) {
@@ -23,9 +24,20 @@ export function useReliableWebSocket(urlFactory, options = {}) {
   }
 
   function getUrl() {
-    return typeof urlFactory === "function"
+    const url = typeof urlFactory === "function"
       ? urlFactory(options.context?.() || {})
       : urlFactory;
+    lastUrl.value = url;
+    return url;
+  }
+
+  function describeUrl() {
+    try {
+      const parsed = new URL(lastUrl.value);
+      return `${parsed.origin}${parsed.pathname}`;
+    } catch {
+      return lastUrl.value || "websocket endpoint";
+    }
   }
 
   function reconnectDelay() {
@@ -47,12 +59,14 @@ export function useReliableWebSocket(urlFactory, options = {}) {
     if (manuallyClosed) return;
     if (event?.code >= 4000 && event.code <= 4999) {
       setState("closed");
+      error.value = "WebSocket authorization failed. Please sign in again.";
+      errorListeners.forEach((cb) => cb(error.value, { url: describeUrl(), closeCode: event.code }));
       return;
     }
     if (reconnectAttempts >= (options.maxReconnectAttempts || MAX_RECONNECT_ATTEMPTS)) {
       setState("error");
-      error.value = "Connection lost. Please refresh and try again.";
-      errorListeners.forEach((cb) => cb(error.value));
+      error.value = `WebSocket connection failed for ${describeUrl()}. Check production proxy /ws upgrade routing.`;
+      errorListeners.forEach((cb) => cb(error.value, { url: describeUrl(), closeCode: event?.code }));
       return;
     }
 
@@ -98,8 +112,8 @@ export function useReliableWebSocket(urlFactory, options = {}) {
     };
 
     ws.onerror = () => {
-      error.value = "WebSocket connection error.";
-      errorListeners.forEach((cb) => cb(error.value));
+      error.value = `WebSocket connection error for ${describeUrl()}.`;
+      errorListeners.forEach((cb) => cb(error.value, { url: describeUrl() }));
     };
 
     ws.onclose = (event) => {
@@ -144,5 +158,5 @@ export function useReliableWebSocket(urlFactory, options = {}) {
     return () => stateListeners.delete(cb);
   }
 
-  return { state, error, isOpen, connect, disconnect, send, onMessage, onError, onStateChange };
+  return { state, error, lastUrl, isOpen, connect, disconnect, send, onMessage, onError, onStateChange };
 }

@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
 	ws "github.com/fasthttp/websocket"
+	"github.com/gofiber/fiber/v3"
 )
 
 const (
@@ -20,6 +22,21 @@ type wsEnvelope struct {
 	Type string `json:"type"`
 	Data string `json:"data,omitempty"`
 	Ts   string `json:"ts,omitempty"`
+}
+
+func ensureWebSocketUpgrade(c fiber.Ctx) error {
+	header := c.RequestCtx().Request.Header
+	upgrade := strings.ToLower(string(header.Peek("Upgrade")))
+	connection := strings.ToLower(string(header.Peek("Connection")))
+	key := header.Peek("Sec-WebSocket-Key")
+
+	if upgrade != "websocket" || !strings.Contains(connection, "upgrade") || len(key) == 0 {
+		return c.Status(fiber.StatusUpgradeRequired).JSON(fiber.Map{
+			"status":  "error",
+			"message": "WebSocket upgrade required",
+		})
+	}
+	return nil
 }
 
 type wsClient struct {

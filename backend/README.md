@@ -165,7 +165,10 @@ air
 
 - `GET /ws/servers/:id/logs` - Stream server logs (requires token query param)
 - `GET /ws/servers/:id/terminal` - Server terminal access (requires token query param)
+- `GET /ws/server-setup/:job_id` - Stream server setup progress (requires token query param)
 - `GET /ws/backend-logs` - Stream backend application logs (requires token query param)
+
+Production reverse proxies must forward websocket upgrade traffic for `/ws` to this backend service. For nginx, configure `proxy_http_version 1.1`, `proxy_set_header Upgrade $http_upgrade`, and `proxy_set_header Connection "upgrade"` on the `/ws/` location. A `502` from the browser usually means nginx cannot reach the backend upstream or the `/ws` location is missing upgrade routing.
 
 ### Plugin Management
 

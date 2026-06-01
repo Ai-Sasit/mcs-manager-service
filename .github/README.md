@@ -13,7 +13,7 @@ The `deploy-frontend` job:
 1. Checks out the repository.
 2. Installs Bun.
 3. Runs `bun install` in `frontend`.
-4. Writes `frontend/.env` with `VITE_API_BASE_URL`.
+4. Writes `frontend/.env` with `VITE_API_BASE_URL` and optional `VITE_WS_BASE_URL`.
 5. Runs `bun run build`.
 6. Uploads `frontend/dist/*` to `/tmp/mc-manage-frontend/` on the VPS.
 7. Copies the uploaded files into `/var/www/${DOMAIN_NAME}` with `rsync --delete`.
@@ -56,6 +56,7 @@ Configure these in repository settings under **Actions variables**:
 ## Optional GitHub Variables
 
 - `VPS_PORT`: SSH port. Defaults to `22`.
+- `VITE_WS_BASE_URL`: optional websocket base URL. Use this when production websocket traffic should use a different origin than `VITE_API_BASE_URL`, for example `wss://example.com` or `wss://api.example.com`.
 - `BACKEND_PORT`: backend service port. Defaults to `8080`.
 - `DEBUG_MODE`: backend debug flag. Defaults to `false`.
 - `ADMIN_USERNAME`: initial admin username. Defaults to `admin`.
@@ -86,6 +87,30 @@ The VPS user must be able to run the required `sudo` commands used by the workfl
 
 The server should have `rsync`, `systemd`, Docker Compose, and nginx or another web server already configured to serve `/var/www/${DOMAIN_NAME}`.
 
+## Production WebSockets
+
+The frontend websocket paths are served under `/ws`, while HTTP APIs are served under `/api/v1`. In production, nginx or your reverse proxy must proxy both `/api/v1` and `/ws` to the same backend service port.
+
+For nginx, the `/ws` location must preserve upgrade headers:
+
+```nginx
+location /ws/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+```
+
+Use the backend port from `BACKEND_PORT` if it is not `8080`. If the frontend is served over HTTPS, websocket URLs must use `wss://`, not `ws://`.
+
+Set `VITE_WS_BASE_URL` only when the websocket origin is different from what the frontend can derive from `VITE_API_BASE_URL`. For same-domain deployments, `VITE_WS_BASE_URL=wss://your-domain.com` is usually enough.
+
 ## Manual Deployment Checklist
 
 Before pushing to `deploy`:
@@ -101,9 +126,10 @@ After deployment:
 
 1. Open the frontend domain and confirm the app loads.
 2. Confirm frontend API calls reach `VITE_API_BASE_URL`.
-3. Check MongoDB with `cd /opt/mc-manage/database && docker compose ps`.
-4. Check the backend service with `systemctl status mc-manage`.
-5. Check recent backend logs with `journalctl -u mc-manage -n 50` if the service does not become active.
+3. Confirm websocket calls use `wss://<domain>/ws/...` in browser devtools.
+4. Check MongoDB with `cd /opt/mc-manage/database && docker compose ps`.
+5. Check the backend service with `systemctl status mc-manage`.
+6. Check recent backend logs with `journalctl -u mc-manage -n 50` if the service does not become active.
 
 ## Troubleshooting
 
@@ -112,3 +138,4 @@ After deployment:
 - If MongoDB does not start, check `/opt/mc-manage/database/.env`, `docker compose ps`, and `docker compose logs`.
 - If backend deployment fails, check whether `mc-manage-backend` exists in `/tmp/mc-manage/` and whether `/opt/mc-manage/backend` is writable through `sudo`.
 - If the service starts then exits, inspect `journalctl -u mc-manage -n 50`.
+- If websocket requests fail with `502`, confirm the backend service is active, the proxy upstream port matches `BACKEND_PORT`, `/ws` includes the nginx upgrade headers above, TLS pages are using `wss://`, and the browser console websocket URL points at the production domain rather than `localhost` or the wrong API host.

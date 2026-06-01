@@ -25,6 +25,9 @@ type terminalCommandMessage struct {
 // WsLogs streams server stdout/stderr to a WebSocket client
 func WsLogs(c fiber.Ctx) error {
 	id := c.Params("id")
+	if err := ensureWebSocketUpgrade(c); err != nil {
+		return err
+	}
 	logger.Info("[WsLogs] Client connected server="+id, nil)
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
@@ -66,7 +69,7 @@ func WsLogs(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsLogs] Upgrade failed server="+id+": "+err.Error(), nil)
-		return err
+		return nil
 	}
 	// Return nil after successful upgrade — Fiber must not write to hijacked conn
 	return nil
@@ -75,6 +78,9 @@ func WsLogs(c fiber.Ctx) error {
 // WsTerminal provides bidirectional terminal: logs streamed out, commands sent in
 func WsTerminal(c fiber.Ctx) error {
 	id := c.Params("id")
+	if err := ensureWebSocketUpgrade(c); err != nil {
+		return err
+	}
 	logger.Info("[WsTerminal] Client connected server="+id, nil)
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
@@ -125,7 +131,7 @@ func WsTerminal(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsTerminal] Upgrade failed server="+id+": "+err.Error(), nil)
-		return err
+		return nil
 	}
 	return nil
 }
@@ -140,6 +146,9 @@ func parseTerminalCommand(msg []byte) string {
 
 // WsBackendLogs streams internal backend logs to a WebSocket client
 func WsBackendLogs(c fiber.Ctx) error {
+	if err := ensureWebSocketUpgrade(c); err != nil {
+		return err
+	}
 	logger.Info("[WsBackendLogs] Client connected", nil)
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
@@ -180,7 +189,7 @@ func WsBackendLogs(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsBackendLogs] Upgrade failed: "+err.Error(), nil)
-		return err
+		return nil
 	}
 	return nil
 }
@@ -190,6 +199,9 @@ func WsServerSetup(c fiber.Ctx) error {
 	job, ok := state.SetupJobs().Get(jobID)
 	if !ok {
 		return c.Status(fiber.StatusNotFound).SendString("Setup job not found")
+	}
+	if err := ensureWebSocketUpgrade(c); err != nil {
+		return err
 	}
 
 	logger.Info("[WsServerSetup] Client connected job="+jobID, nil)
@@ -232,7 +244,7 @@ func WsServerSetup(c fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("[WsServerSetup] Upgrade failed job="+jobID+": "+err.Error(), nil)
-		return err
+		return nil
 	}
 	return nil
 }

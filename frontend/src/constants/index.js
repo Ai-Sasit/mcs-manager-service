@@ -1,9 +1,23 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
 
-export const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws").replace(
-  /\/api\/v1$/,
-  "",
+function toWebSocketOrigin(url) {
+  if (url.startsWith("ws://") || url.startsWith("wss://")) {
+    return url.replace(/\/$/, "");
+  }
+
+  const browserOrigin =
+    typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+  const parsed = new URL(url, browserOrigin);
+  parsed.protocol = parsed.protocol === "https:" ? "wss:" : "ws:";
+  parsed.pathname = parsed.pathname.replace(/\/api\/v1\/?$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+export const WS_BASE_URL = toWebSocketOrigin(
+  import.meta.env.VITE_WS_BASE_URL || API_BASE_URL,
 );
 
 export const API_TIMEOUT = 240000;
