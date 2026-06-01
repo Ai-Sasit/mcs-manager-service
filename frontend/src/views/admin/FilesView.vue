@@ -3,17 +3,30 @@
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title">File Explorer</h2>
-        <p class="page-subtitle">Browse and edit server files directly from the web.</p>
+        <p class="page-subtitle">
+          Browse and edit server files directly from the web.
+        </p>
       </div>
       <div class="header-actions">
-        <el-select v-model="selectedServerId" placeholder="Select Server" @change="fetchFiles" style="width: 250px">
+        <el-select
+          v-model="selectedServerId"
+          placeholder="Select Server"
+          @change="fetchFiles"
+          style="width: 250px"
+        >
           <el-option
             v-for="server in servers"
             :key="server.id"
             :label="server.name"
-            :value="server.id" />
+            :value="server.id"
+          />
         </el-select>
-        <el-button :icon="Refresh" @click="fetchFiles" :loading="loading" :disabled="!selectedServerId">
+        <el-button
+          :icon="Refresh"
+          @click="fetchFiles"
+          :loading="loading"
+          :disabled="!selectedServerId"
+        >
           Refresh
         </el-button>
       </div>
@@ -23,11 +36,23 @@
       <!-- File Tree -->
       <el-card class="file-tree-card card">
         <div class="breadcrumb-row">
-          <el-button size="small" :icon="ArrowLeft" v-if="currentPath" @click="goUp">Back</el-button>
-          <span class="path-text">{{ currentPath || '/' }}</span>
+          <el-button
+            size="small"
+            :icon="ArrowLeft"
+            v-if="currentPath"
+            @click="goUp"
+            >Back</el-button
+          >
+          <span class="path-text">{{ currentPath || "/" }}</span>
         </div>
-        <el-table :data="files" stripe style="width: 100%" @row-click="handleFileClick" row-class-name="file-row">
-           <el-table-column label="Name" min-width="180">
+        <el-table
+          :data="files"
+          stripe
+          style="width: 100%"
+          @row-click="handleFileClick"
+          row-class-name="file-row"
+        >
+          <el-table-column label="Name" min-width="180">
             <template #default="{ row }">
               <div class="file-name">
                 <el-icon v-if="row.is_dir"><Folder /></el-icon>
@@ -35,12 +60,12 @@
                 <span>{{ row.name }}</span>
               </div>
             </template>
-           </el-table-column>
-           <el-table-column prop="size" label="Size" width="100">
-             <template #default="{ row }">
-               {{ row.is_dir ? '-' : formatSize(row.size) }}
-             </template>
-           </el-table-column>
+          </el-table-column>
+          <el-table-column prop="size" label="Size" width="100">
+            <template #default="{ row }">
+              {{ row.is_dir ? "-" : formatSize(row.size) }}
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -48,16 +73,24 @@
       <el-card class="editor-card card" v-loading="editorLoading">
         <div v-if="editingFile" class="editor-header">
           <span class="editing-title">Editing: {{ editingFile }}</span>
-          <el-button type="primary" size="small" :icon="Check" @click="saveFile" :loading="saving">Save Changes</el-button>
+          <el-button
+            type="primary"
+            size="small"
+            :icon="Check"
+            @click="saveFile"
+            :loading="saving"
+            >Save Changes</el-button
+          >
         </div>
         <div v-if="editingFile" class="editor-content">
-           <el-input 
-              v-model="fileContent" 
-              type="textarea" 
-              autosize 
-              :rows="15" 
-              spellcheck="false" 
-              class="custom-editor" />
+          <el-input
+            v-model="fileContent"
+            type="textarea"
+            autosize
+            :rows="15"
+            spellcheck="false"
+            class="custom-editor"
+          />
         </div>
         <el-empty v-else description="Select a file to edit" />
       </el-card>
@@ -71,11 +104,15 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
-import { 
-  Folder, Document, Refresh, ArrowLeft, Check 
+import {
+  Folder,
+  Document,
+  Refresh,
+  ArrowLeft,
+  Check,
 } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
 
 const store = useServersStore();
@@ -94,10 +131,14 @@ async function fetchFiles() {
   if (!selectedServerId.value) return;
   loading.value = true;
   try {
-    const { data } = await api.listFiles(selectedServerId.value, currentPath.value);
+    const { data } = await apiClient.get(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/files?path=${encodeURIComponent(currentPath.value || "")}`,
+    );
     files.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to list files: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to list files: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     loading.value = false;
   }
@@ -116,10 +157,14 @@ async function loadFile(path) {
   editingFile.value = path;
   editorLoading.value = true;
   try {
-    const { data } = await api.readFile(selectedServerId.value, path);
+    const { data } = await apiClient.get(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/files/read?path=${encodeURIComponent(path)}`,
+    );
     fileContent.value = data.data;
   } catch (e) {
-    ElMessage.error("Failed to load file: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to load file: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     editorLoading.value = false;
   }
@@ -128,19 +173,24 @@ async function loadFile(path) {
 async function saveFile() {
   saving.value = true;
   try {
-    await api.writeFile(selectedServerId.value, editingFile.value, fileContent.value);
+    await apiClient.post(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/files/write?path=${encodeURIComponent(editingFile.value)}`,
+      { content: fileContent.value },
+    );
     ElMessage.success("File saved successfully");
   } catch (e) {
-    ElMessage.error("Failed to save file: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to save file: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     saving.value = false;
   }
 }
 
 function goUp() {
-  const parts = currentPath.value.split('/');
+  const parts = currentPath.value.split("/");
   parts.pop();
-  currentPath.value = parts.join('/');
+  currentPath.value = parts.join("/");
   fetchFiles();
 }
 
@@ -194,7 +244,7 @@ onMounted(async () => {
   overflow-y: auto;
 }
 :deep(.custom-editor textarea) {
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.6;
 }

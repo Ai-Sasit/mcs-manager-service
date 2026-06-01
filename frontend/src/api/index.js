@@ -1,88 +1,213 @@
-import api from "@/api/client";
+import apiClient from "./client";
 
-export default {
-  // Auth
-  login: (username, password) =>
-    api.post("/auth/login", { username, password }),
-  getMe: () => api.get("/auth/me"),
+class ApiService {
+  constructor() {
+    this.https = apiClient;
+  }
 
-  listServers: () => api.get("/servers"),
-  createServer: (data) => api.post("/servers", data),
-  getServer: (id) => api.get(`/servers/${encodeURIComponent(id)}`),
-  deleteServer: (id) => api.delete(`/servers/${encodeURIComponent(id)}`),
-  startServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/start`),
-  stopServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/stop`),
-  restartServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/restart`),
-  killServer: (id) => api.post(`/servers/${encodeURIComponent(id)}/kill`),
+  // ─── Auth ───
+  async login(username, password) {
+    return this.https.post("/auth/login", { username, password });
+  }
 
-  listPlugins: (id) => api.get(`/servers/${encodeURIComponent(id)}/plugins`),
-  uploadPlugin: (id, formData) =>
-    api.post(`/servers/${encodeURIComponent(id)}/plugins`, formData, {
+  async logout() {
+    return this.https.post("/auth/logout");
+  }
+
+  async getMe() {
+    return this.https.get("/auth/me");
+  }
+
+  async changePassword(currentPassword, newPassword) {
+    return this.https.put("/auth/me/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }
+
+  // ─── Servers ───
+  async listServers() {
+    return this.https.get("/servers");
+  }
+
+  async createServer(payload) {
+    return this.https.post("/servers", payload);
+  }
+
+  async getServer(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}`);
+  }
+
+  async deleteServer(id) {
+    return this.https.delete(`/servers/${encodeURIComponent(id)}`);
+  }
+
+  async startServer(id) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/start`);
+  }
+
+  async stopServer(id) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/stop`);
+  }
+
+  async restartServer(id) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/restart`);
+  }
+
+  async killServer(id) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/kill`);
+  }
+
+  // ─── Config ───
+  async getConfig(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}/config`);
+  }
+
+  async updateConfig(id, config) {
+    return this.https.put(`/servers/${encodeURIComponent(id)}/config`, config);
+  }
+
+  // ─── Plugins ───
+  async listPlugins(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}/plugins`);
+  }
+
+  async uploadPlugin(id, formData) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/plugins`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
-    }),
-  deletePlugin: (id, name) =>
-    api.delete(
+    });
+  }
+
+  async deletePlugin(id, name) {
+    return this.https.delete(
       `/servers/${encodeURIComponent(id)}/plugins/${encodeURIComponent(name)}`,
-    ),
+    );
+  }
 
-  getJavaVersions: () => api.get("/versions/java"),
-  getBedrockVersions: () => api.get("/versions/bedrock"),
+  // ─── Versions ───
+  async getJavaVersions() {
+    return this.https.get("/versions/java");
+  }
 
-  // Players
-  getPlayers: (id) => api.get(`/servers/${encodeURIComponent(id)}/players`),
-  updatePlayer: (id, data) =>
-    api.post(`/servers/${encodeURIComponent(id)}/players`, data),
+  async getBedrockVersions() {
+    return this.https.get("/versions/bedrock");
+  }
 
-  // Files
-  listFiles: (id, path) =>
-    api.get(
+  // ─── Players ───
+  async getPlayers(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}/players`);
+  }
+
+  async updatePlayer(id, data) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/players`, data);
+  }
+
+  // ─── Files ───
+  async listFiles(id, path) {
+    return this.https.get(
       `/servers/${encodeURIComponent(id)}/files?path=${encodeURIComponent(path || "")}`,
-    ),
-  readFile: (id, path) =>
-    api.get(
+    );
+  }
+
+  async readFile(id, path) {
+    return this.https.get(
       `/servers/${encodeURIComponent(id)}/files/read?path=${encodeURIComponent(path)}`,
-    ),
-  writeFile: (id, path, content) =>
-    api.post(
+    );
+  }
+
+  async writeFile(id, path, content) {
+    return this.https.post(
       `/servers/${encodeURIComponent(id)}/files/write?path=${encodeURIComponent(path)}`,
       { content },
-    ),
+    );
+  }
 
-  // Backups
-  listBackups: (id) => api.get(`/servers/${encodeURIComponent(id)}/backups`),
-  createBackup: (id) => api.post(`/servers/${encodeURIComponent(id)}/backups`),
-  deleteBackup: (id, name) =>
-    api.delete(
+  // ─── Backups ───
+  async listBackups(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}/backups`);
+  }
+
+  async createBackup(id) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/backups`);
+  }
+
+  async deleteBackup(id, name) {
+    return this.https.delete(
       `/servers/${encodeURIComponent(id)}/backups/${encodeURIComponent(name)}`,
-    ),
+    );
+  }
 
-  // Schedules
-  listSchedules: () => api.get("/schedules"),
-  createSchedule: (data) => api.post("/schedules", data),
-  toggleSchedule: (id, enabled) =>
-    api.put(`/schedules/${encodeURIComponent(id)}/toggle`, { enabled }),
-  deleteSchedule: (id) => api.delete(`/schedules/${encodeURIComponent(id)}`),
+  // ─── Schedules ───
+  async listSchedules() {
+    return this.https.get("/schedules");
+  }
 
-  // Config
-  getConfig: (id) => api.get(`/servers/${encodeURIComponent(id)}/config`),
-  updateConfig: (id, config) =>
-    api.put(`/servers/${encodeURIComponent(id)}/config`, config),
+  async createSchedule(payload) {
+    return this.https.post("/schedules", payload);
+  }
 
-  // System
-  getAuditLogs: () => api.get("/audit-logs"),
-  lookupPort: (port) => api.get(`/system/port-lookup?port=${port}`),
-  killPid: (pid) => api.post("/system/kill-pid", { pid }),
-  getSettings: () => api.get("/settings"),
-  updateSettings: (data) => api.put("/settings", data),
+  async toggleSchedule(id, enabled) {
+    return this.https.put(`/schedules/${encodeURIComponent(id)}/toggle`, { enabled });
+  }
 
-  // Users
-  listUsers: () => api.get("/users"),
-  createUser: (data) => api.post("/users", data),
-  updateUser: (id, data) => api.put(`/users/${encodeURIComponent(id)}`, data),
-  deleteUser: (id) => api.delete(`/users/${encodeURIComponent(id)}`),
+  async deleteSchedule(id) {
+    return this.https.delete(`/schedules/${encodeURIComponent(id)}`);
+  }
 
-  // Backend logs
-  listBackendLogFiles: () => api.get("/backend-logs"),
-  getBackendLogFile: (file, tail = 500) =>
-    api.get(`/backend-logs/file?file=${encodeURIComponent(file)}&tail=${tail}`),
+  // ─── System ───
+  async getSystemInfo() {
+    return this.https.get("/system/info");
+  }
+
+  async lookupPort(port) {
+    return this.https.get(`/system/port-lookup?port=${port}`);
+  }
+
+  async killPid(pid) {
+    return this.https.post("/system/kill-pid", { pid });
+  }
+
+  async getAuditLogs() {
+    return this.https.get("/audit-logs");
+  }
+
+  async listBackendLogFiles() {
+    return this.https.get("/backend-logs");
+  }
+
+  async getBackendLogFile(file, tail = 500) {
+    return this.https.get(`/backend-logs/file?file=${encodeURIComponent(file)}&tail=${tail}`);
+  }
+
+  // ─── Users ───
+  async listUsers() {
+    return this.https.get("/users");
+  }
+
+  async createUser(data) {
+    return this.https.post("/users", data);
+  }
+
+  async updateUser(id, data) {
+    return this.https.put(`/users/${encodeURIComponent(id)}`, data);
+  }
+
+  async deleteUser(id) {
+    return this.https.delete(`/users/${encodeURIComponent(id)}`);
+  }
+
+  // ─── Settings ───
+  async getSettings() {
+    return this.https.get("/settings");
+  }
+
+  async updateSettings(data) {
+    return this.https.put("/settings", data);
+  }
+}
+
+export default {
+  install: (app) => {
+    app.config.globalProperties.$api = new ApiService();
+  },
 };

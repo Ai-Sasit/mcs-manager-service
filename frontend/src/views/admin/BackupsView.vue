@@ -3,33 +3,53 @@
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title">Backups & Snapshots</h2>
-        <p class="page-subtitle">Create and manage server backups to prevent data loss.</p>
+        <p class="page-subtitle">
+          Create and manage server backups to prevent data loss.
+        </p>
       </div>
       <div class="header-actions">
-        <el-select v-model="selectedServerId" placeholder="Select Server" @change="fetchBackups" style="width: 250px">
+        <el-select
+          v-model="selectedServerId"
+          placeholder="Select Server"
+          @change="fetchBackups"
+          style="width: 250px"
+        >
           <el-option
             v-for="server in servers"
             :key="server.id"
             :label="server.name"
-            :value="server.id" />
+            :value="server.id"
+          />
         </el-select>
-        <el-button :icon="Plus" type="primary" :disabled="!selectedServerId" @click="createBackup" :loading="creating">
+        <el-button
+          :icon="Plus"
+          type="primary"
+          :disabled="!selectedServerId"
+          @click="createBackup"
+          :loading="creating"
+        >
           Create Backup
         </el-button>
-        <el-button :icon="Refresh" @click="fetchBackups" :loading="loading" :disabled="!selectedServerId">
+        <el-button
+          :icon="Refresh"
+          @click="fetchBackups"
+          :loading="loading"
+          :disabled="!selectedServerId"
+        >
           Refresh
         </el-button>
       </div>
     </div>
 
     <el-card v-if="selectedServerId">
-      <el-alert 
-         title="Backup in progress" 
-         type="info" 
-         v-if="creating" 
-         show-icon 
-         description="The backup task is running in the background. Check audit logs for status." 
-         style="margin-bottom: 20px" />
+      <el-alert
+        title="Backup in progress"
+        type="info"
+        v-if="creating"
+        show-icon
+        description="The backup task is running in the background. Check audit logs for status."
+        style="margin-bottom: 20px"
+      />
 
       <el-table :data="backups" stripe style="width: 100%" v-loading="loading">
         <el-table-column prop="name" label="Backup Name" />
@@ -43,7 +63,12 @@
             {{ formatSize(row.size) }}
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="180" fixed="right" align="center">
+        <el-table-column
+          label="Actions"
+          width="180"
+          fixed="right"
+          align="center"
+        >
           <template #default="{ row }">
             <el-button-group>
               <el-button
@@ -51,9 +76,13 @@
                 type="info"
                 disabled
                 title="Restore not implemented yet"
-              >Restore</el-button>
+                >Restore</el-button
+              >
 
-              <el-popconfirm title="Delete this backup forever?" @confirm="deleteBackup(row.name)">
+              <el-popconfirm
+                title="Delete this backup forever?"
+                @confirm="deleteBackup(row.name)"
+              >
                 <template #reference>
                   <el-button size="small" type="danger">Delete</el-button>
                 </template>
@@ -62,7 +91,10 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="backups.length === 0 && !loading" description="No backups found for this server" />
+      <el-empty
+        v-if="backups.length === 0 && !loading"
+        description="No backups found for this server"
+      />
     </el-card>
 
     <div v-else class="center-placeholder card">
@@ -75,7 +107,7 @@
 import { ref, onMounted, computed } from "vue";
 import { Plus, Refresh } from "@element-plus/icons-vue";
 import { ElMessage, ElNotification } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
 
 const store = useServersStore();
@@ -90,10 +122,14 @@ async function fetchBackups() {
   if (!selectedServerId.value) return;
   loading.value = true;
   try {
-    const { data } = await api.listBackups(selectedServerId.value);
+    const { data } = await apiClient.get(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups`,
+    );
     backups.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to fetch backups: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to fetch backups: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     loading.value = false;
   }
@@ -102,16 +138,19 @@ async function fetchBackups() {
 async function createBackup() {
   creating.value = true;
   try {
-    const { data } = await api.createBackup(selectedServerId.value);
+    const { data } = await apiClient.post(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups`,
+    );
     ElNotification({
-      title: 'Success',
-      message: data.message || 'Backup started',
-      type: 'success',
+      title: "Success",
+      message: data.message || "Backup started",
+      type: "success",
     });
-    // It's backgrounded in Go, so we can't immediately refresh
     setTimeout(fetchBackups, 3000);
   } catch (e) {
-    ElMessage.error("Failed to start backup: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to start backup: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     creating.value = false;
   }
@@ -120,11 +159,15 @@ async function createBackup() {
 async function deleteBackup(name) {
   loading.value = true;
   try {
-    await api.deleteBackup(selectedServerId.value, name);
+    await apiClient.delete(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups/${encodeURIComponent(name)}`,
+    );
     ElMessage.success("Backup deleted");
     fetchBackups();
   } catch (e) {
-    ElMessage.error("Failed to delete backup: " + (e.response?.data?.message || e.message));
+    ElMessage.error(
+      "Failed to delete backup: " + (e.response?.data?.message || e.message),
+    );
   } finally {
     loading.value = false;
   }

@@ -9,7 +9,6 @@
         >Add User</el-button
       >
     </div>
-
     <div class="card" style="padding: 24px">
       <el-table :data="users" style="width: 100%" v-loading="loading">
         <el-table-column label="Username" prop="username" />
@@ -18,9 +17,9 @@
             <el-tag
               :type="row.role === 'admin' ? 'danger' : 'info'"
               effect="light"
-              size="small">
-              {{ row.role }}
-            </el-tag>
+              size="small"
+              >{{ row.role }}</el-tag
+            >
           </template>
         </el-table-column>
         <el-table-column label="Created" width="200">
@@ -34,39 +33,42 @@
               size="small"
               :icon="Edit"
               circle
-              @click="openEdit(row)" />
+              @click="openEdit(row)"
+            />
             <el-button
               size="small"
               :icon="Delete"
               type="danger"
               circle
               @click="handleDelete(row)"
-              :disabled="row.username === currentUsername" />
+              :disabled="row.username === currentUsername"
+            />
           </template>
         </el-table-column>
       </el-table>
     </div>
-
-    <!-- Create/Edit Dialog -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? 'Edit User' : 'Create User'"
       width="420px"
-      :close-on-click-modal="false">
+      :close-on-click-modal="false"
+    >
       <el-form :model="form" label-position="top">
-        <el-form-item label="Username">
-          <el-input
+        <el-form-item label="Username"
+          ><el-input
             v-model="form.username"
             placeholder="Enter username"
-            :disabled="isEdit" />
-        </el-form-item>
+            :disabled="isEdit"
+        /></el-form-item>
         <el-form-item
-          :label="isEdit ? 'New Password (leave blank to keep)' : 'Password'">
+          :label="isEdit ? 'New Password (leave blank to keep)' : 'Password'"
+        >
           <el-input
             v-model="form.password"
             type="password"
             placeholder="Enter password"
-            show-password />
+            show-password
+          />
         </el-form-item>
         <el-form-item label="Role">
           <el-select v-model="form.role" style="width: 100%">
@@ -77,9 +79,9 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">Cancel</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">
-          {{ isEdit ? "Update" : "Create" }}
-        </el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">{{
+          isEdit ? "Update" : "Create"
+        }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -89,7 +91,7 @@
 import { ref, onMounted } from "vue";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
 
 const users = ref([]);
 const loading = ref(false);
@@ -98,13 +100,12 @@ const isEdit = ref(false);
 const editId = ref("");
 const saving = ref(false);
 const currentUsername = localStorage.getItem("mc_username") || "admin";
-
 const form = ref({ username: "", password: "", role: "viewer" });
 
 async function loadUsers() {
   loading.value = true;
   try {
-    const { data } = await api.listUsers();
+    const { data } = await apiClient.get("/users");
     users.value = data.data || [];
   } catch {
     users.value = [];
@@ -119,7 +120,6 @@ function openCreate() {
   form.value = { username: "", password: "", role: "viewer" };
   dialogVisible.value = true;
 }
-
 function openEdit(row) {
   isEdit.value = true;
   editId.value = row.id;
@@ -131,7 +131,7 @@ async function handleSave() {
   saving.value = true;
   try {
     if (isEdit.value) {
-      await api.updateUser(editId.value, {
+      await apiClient.put(`/users/${encodeURIComponent(editId.value)}`, {
         username: form.value.username,
         password: form.value.password || undefined,
         role: form.value.role,
@@ -143,7 +143,7 @@ async function handleSave() {
         saving.value = false;
         return;
       }
-      await api.createUser(form.value);
+      await apiClient.post("/users", form.value);
       ElMessage.success("User created.");
     }
     dialogVisible.value = false;
@@ -167,7 +167,7 @@ async function handleDelete(row) {
         confirmButtonClass: "el-button--danger",
       },
     );
-    await api.deleteUser(row.id);
+    await apiClient.delete(`/users/${encodeURIComponent(row.id)}`);
     ElMessage.success("User deleted.");
     loadUsers();
   } catch (e) {
@@ -179,7 +179,6 @@ function formatDate(iso) {
   if (!iso) return "-";
   return new Date(iso).toLocaleString();
 }
-
 onMounted(loadUsers);
 </script>
 
@@ -190,20 +189,17 @@ onMounted(loadUsers);
   flex-direction: column;
   gap: 20px;
 }
-
 .page-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
 }
-
 .toolbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
 .toolbar-left h3 {
   margin: 0;
   font-size: 16px;

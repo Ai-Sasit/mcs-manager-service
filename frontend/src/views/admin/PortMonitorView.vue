@@ -3,7 +3,9 @@
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title text-gradient">Port & Process Monitor</h2>
-        <p class="page-subtitle">Manage OS processes and network ports for your fleet.</p>
+        <p class="page-subtitle">
+          Manage OS processes and network ports for your fleet.
+        </p>
       </div>
       <div class="header-actions">
         <el-input
@@ -16,10 +18,17 @@
           @keyup.enter="handleSearch"
         >
           <template #append>
-            <el-button :icon="Search" @click="handleSearch" :loading="searchLoading">Lookup</el-button>
+            <el-button
+              :icon="Search"
+              @click="handleSearch"
+              :loading="searchLoading"
+              >Lookup</el-button
+            >
           </template>
         </el-input>
-        <el-button round :icon="Refresh" @click="refresh" :loading="loading">Refresh</el-button>
+        <el-button round :icon="Refresh" @click="refresh" :loading="loading"
+          >Refresh</el-button
+        >
       </div>
     </div>
 
@@ -28,7 +37,9 @@
       <div class="stat-card glass-card">
         <div class="stat-header">
           <span class="stat-title">Listening Ports</span>
-          <div class="stat-icon primary"><el-icon size="20"><Connection /></el-icon></div>
+          <div class="stat-icon primary">
+            <el-icon size="20"><Connection /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">{{ listeningCount }}</div>
@@ -37,7 +48,9 @@
       <div class="stat-card glass-card">
         <div class="stat-header">
           <span class="stat-title">Active PIDs</span>
-          <div class="stat-icon success"><el-icon size="20"><Cpu /></el-icon></div>
+          <div class="stat-icon success">
+            <el-icon size="20"><Cpu /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">{{ activePidCount }}</div>
@@ -46,7 +59,9 @@
       <div class="stat-card glass-card">
         <div class="stat-header">
           <span class="stat-title">Network Type</span>
-          <div class="stat-icon warning"><el-icon size="20"><Odometer /></el-icon></div>
+          <div class="stat-icon warning">
+            <el-icon size="20"><Odometer /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">TCP/UDP</div>
@@ -55,7 +70,10 @@
     </div>
 
     <!-- Quick Lookup Result -->
-    <div v-if="searchResult || searchError" class="search-result-container anim-slide-down">
+    <div
+      v-if="searchResult || searchError"
+      class="search-result-container anim-slide-down"
+    >
       <el-alert
         v-if="searchError"
         :title="searchError"
@@ -88,7 +106,12 @@
               <span class="value">{{ searchResult.protocol }}</span>
             </div>
           </div>
-          <el-button type="danger" round :icon="CircleClose" @click="handleKillPid(searchResult.pid)">
+          <el-button
+            type="danger"
+            round
+            :icon="CircleClose"
+            @click="handleKillPid(searchResult.pid)"
+          >
             Terminate Process
           </el-button>
         </div>
@@ -106,7 +129,7 @@
               </div>
               <div class="instance-info">
                 <span class="instance-name">{{ row.name }}</span>
-                <span class="instance-id">{{ row.id.split('-')[0] }}...</span>
+                <span class="instance-id">{{ row.id.split("-")[0] }}...</span>
               </div>
             </div>
           </template>
@@ -114,7 +137,12 @@
 
         <el-table-column label="Port" width="120">
           <template #default="{ row }">
-            <el-tag effect="light" round size="small" :type="row.status === 'running' ? 'success' : 'info'">
+            <el-tag
+              effect="light"
+              round
+              size="small"
+              :type="row.status === 'running' ? 'success' : 'info'"
+            >
               {{ row.port }}
             </el-tag>
           </template>
@@ -142,13 +170,18 @@
               <el-button link :icon="More" />
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item :icon="View" @click="$router.push(`/server/${row.id}`)">View Details</el-dropdown-item>
-                  <el-dropdown-item 
+                  <el-dropdown-item
+                    :icon="View"
+                    @click="$router.push(`/server/${row.id}`)"
+                    >View Details</el-dropdown-item
+                  >
+                  <el-dropdown-item
                     v-if="row.status === 'running'"
-                    divided 
-                    class="text-danger" 
+                    divided
+                    class="text-danger"
                     :icon="CircleClose"
-                    @click="handleKill(row)">
+                    @click="handleKill(row)"
+                  >
                     Force Kill (SIGKILL)
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -163,14 +196,21 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { 
-  Refresh, Connection, Cpu, Odometer, 
-  More, View, CircleClose, Search,
-  Compass, Close
+import {
+  Refresh,
+  Connection,
+  Cpu,
+  Odometer,
+  More,
+  View,
+  CircleClose,
+  Search,
+  Compass,
+  Close,
 } from "@element-plus/icons-vue";
 import { useServersStore } from "@/stores/servers";
 import { ElMessageBox, ElMessage } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
 
 const store = useServersStore();
 const loading = ref(false);
@@ -180,7 +220,9 @@ const searchResult = ref(null);
 const searchError = ref("");
 
 const listeningCount = computed(() => store.runningCount);
-const activePidCount = computed(() => store.servers.filter(s => !!s.pid).length);
+const activePidCount = computed(
+  () => store.servers.filter((s) => !!s.pid).length,
+);
 
 async function refresh() {
   loading.value = true;
@@ -194,10 +236,13 @@ async function handleSearch() {
   searchError.value = "";
   searchResult.value = null;
   try {
-    const res = await api.lookupPort(searchPortInput.value);
+    const res = await apiClient.get(
+      `/system/port-lookup?port=${searchPortInput.value}`,
+    );
     searchResult.value = res.data.data;
   } catch (e) {
-    searchError.value = e.response?.data?.message || "No process found on this port.";
+    searchError.value =
+      e.response?.data?.message || "No process found on this port.";
   } finally {
     searchLoading.value = false;
   }
@@ -212,17 +257,17 @@ async function handleKillPid(pid) {
         confirmButtonText: "Terminate",
         cancelButtonText: "Cancel",
         type: "warning",
-        confirmButtonClass: "el-button--danger"
-      }
+        confirmButtonClass: "el-button--danger",
+      },
     );
 
     loading.value = true;
-    await api.killPid(pid);
+    await apiClient.post("/system/kill-pid", { pid });
     ElMessage.success(`Process ${pid} killed.`);
     searchResult.value = null;
     await store.fetchServers();
   } catch (e) {
-    if (e !== 'cancel') {
+    if (e !== "cancel") {
       ElMessage.error(e.response?.data?.message || "Failed to kill process");
     }
   } finally {
@@ -239,16 +284,16 @@ async function handleKill(server) {
         confirmButtonText: "Terminate Process",
         cancelButtonText: "Cancel",
         type: "error",
-        confirmButtonClass: "el-button--danger"
-      }
+        confirmButtonClass: "el-button--danger",
+      },
     );
 
     loading.value = true;
-    await api.killServer(server.id);
+    await apiClient.post(`/servers/${encodeURIComponent(server.id)}/kill`);
     ElMessage.success("Process terminated successfully.");
     await store.fetchServers();
   } catch (e) {
-    if (e !== 'cancel') {
+    if (e !== "cancel") {
       ElMessage.error("Failed to kill process");
     }
   } finally {
@@ -336,9 +381,18 @@ onMounted(() => {
   justify-content: center;
 }
 
-.stat-icon.primary { background: rgba(var(--color-primary-rgb), 0.1); color: var(--color-primary); }
-.stat-icon.success { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.stat-icon.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.stat-icon.primary {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+.stat-icon.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+.stat-icon.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
 
 .stat-value {
   font-size: 32px;
@@ -416,9 +470,18 @@ onMounted(() => {
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .anim-slide-down {
@@ -426,8 +489,14 @@ onMounted(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Table Card */
@@ -452,8 +521,14 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.instance-avatar.java { background: #fff7ed; color: #ea580c; }
-.instance-avatar.bedrock { background: #eff6ff; color: #2563eb; }
+.instance-avatar.java {
+  background: #fff7ed;
+  color: #ea580c;
+}
+.instance-avatar.bedrock {
+  background: #eff6ff;
+  color: #2563eb;
+}
 
 .instance-info {
   display: flex;
@@ -493,8 +568,14 @@ onMounted(() => {
   background: #94a3b8;
 }
 
-.dot.running { background: #10b981; box-shadow: 0 0 8px #10b981; }
-.dot.starting { background: #f59e0b; animation: pulse 1s infinite; }
+.dot.running {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.dot.starting {
+  background: #f59e0b;
+  animation: pulse 1s infinite;
+}
 
 .status-text {
   font-size: 13px;
@@ -511,12 +592,20 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .stats-grid { grid-template-columns: 1fr; }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 </style>

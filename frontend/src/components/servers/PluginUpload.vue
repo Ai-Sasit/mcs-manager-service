@@ -5,13 +5,15 @@
       :class="{ dragging }"
       @dragover.prevent="dragging = true"
       @dragleave="dragging = false"
-      @drop.prevent="handleDrop">
+      @drop.prevent="handleDrop"
+    >
       <input
         type="file"
         ref="fileInput"
         @change="handleFile"
         :accept="edition === 'java' ? '.jar' : '.mcpack,.mcaddon,.zip'"
-        style="display: none" />
+        style="display: none"
+      />
       <div class="dropzone-content">
         <el-icon size="36" class="drop-icon"><Upload /></el-icon>
         <p class="drop-text">
@@ -35,7 +37,7 @@
 <script setup>
 import { ref } from "vue";
 import { Upload, Loading } from "@element-plus/icons-vue";
-import api from "@/api";
+import apiClient from "@/api/client";
 
 const props = defineProps({
   serverId: String,
@@ -56,7 +58,13 @@ async function uploadFile(file) {
   try {
     const fd = new FormData();
     fd.append("file", file);
-    await api.uploadPlugin(props.serverId, fd);
+    await apiClient.post(
+      `/servers/${encodeURIComponent(props.serverId)}/plugins`,
+      fd,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
     message.value = `Uploaded ${file.name}`;
     messageType.value = "success";
     emit("uploaded");
@@ -85,7 +93,6 @@ function handleDrop(e) {
 .upload-area {
   margin-top: 8px;
 }
-
 .dropzone {
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-lg);
@@ -95,30 +102,25 @@ function handleDrop(e) {
   cursor: pointer;
   background: var(--color-white);
 }
-
 .dropzone:hover,
 .dropzone.dragging {
   border-color: var(--color-primary);
   background: rgba(16, 185, 129, 0.03);
 }
-
 .dropzone-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
 }
-
 .drop-icon {
   color: var(--color-text-muted);
 }
-
 .drop-text {
   color: var(--color-text-secondary);
   font-weight: 500;
   font-size: 14px;
 }
-
 .upload-status {
   margin-top: 12px;
   text-align: center;
@@ -130,17 +132,14 @@ function handleDrop(e) {
   gap: 6px;
   font-size: 14px;
 }
-
 .spin {
   animation: spin 1.2s linear infinite;
 }
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
-
 .upload-message {
   margin-top: 10px;
   padding: 10px 14px;
@@ -149,12 +148,10 @@ function handleDrop(e) {
   font-size: 13px;
   text-align: center;
 }
-
 .upload-message.success {
   background: rgba(34, 197, 94, 0.08);
   color: #16a34a;
 }
-
 .upload-message.error {
   background: rgba(239, 68, 68, 0.08);
   color: #dc2626;

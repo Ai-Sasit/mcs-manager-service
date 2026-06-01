@@ -1,16 +1,15 @@
 <template>
   <div class="backend-logs-view">
-    <!-- Toolbar -->
     <div class="toolbar card">
       <div class="toolbar-left">
         <el-select
           v-model="selectedFile"
           placeholder="Select log file"
           style="width: 280px"
-          @change="loadLines">
+          @change="loadLines"
+        >
           <el-option v-for="f in files" :key="f" :label="f" :value="f" />
         </el-select>
-
         <el-select v-model="tailCount" style="width: 140px" @change="loadLines">
           <el-option label="Last 100 lines" :value="100" />
           <el-option label="Last 500 lines" :value="500" />
@@ -18,60 +17,61 @@
           <el-option label="Last 2000 lines" :value="2000" />
           <el-option label="Last 5000 lines" :value="5000" />
         </el-select>
-
         <el-input
           v-model="search"
           placeholder="Filter lines..."
           clearable
-          style="width: 220px" />
+          style="width: 220px"
+        />
       </div>
-
       <div class="toolbar-right">
         <el-switch
           v-model="isLive"
           active-text="Live Logs"
           inactive-text=""
-          @change="toggleLive" />
+          @change="toggleLive"
+        />
         <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
-        <el-button @click="loadLines" :loading="loading">
-          <el-icon><Refresh /></el-icon>
-          Refresh
-        </el-button>
-        <el-button @click="clearView">
-          <el-icon><Delete /></el-icon>
-          Clear
-        </el-button>
+        <el-button @click="loadLines" :loading="loading"
+          ><el-icon><Refresh /></el-icon>Refresh</el-button
+        >
+        <el-button @click="clearView"
+          ><el-icon><Delete /></el-icon>Clear</el-button
+        >
       </div>
     </div>
-
-    <!-- Stats bar -->
     <div class="stats-bar" v-if="selectedFile">
-      <span class="stat">
-        <strong>{{ filteredLines.length }}</strong>
-        {{ search ? "matching" : "total" }} lines
-      </span>
-      <span class="stat" v-if="search">
-        of <strong>{{ lines.length }}</strong> loaded
-      </span>
+      <span class="stat"
+        ><strong>{{ filteredLines.length }}</strong>
+        {{ search ? "matching" : "total" }} lines</span
+      >
+      <span class="stat" v-if="search"
+        >of <strong>{{ lines.length }}</strong> loaded</span
+      >
       <span class="stat-sep" v-if="selectedFile">·</span>
       <span class="stat">{{ selectedFile }}</span>
-      <el-tag v-if="isLive" type="danger" size="small" effect="dark" class="live-tag">
-        LIVE
-      </el-tag>
+      <el-tag
+        v-if="isLive"
+        type="danger"
+        size="small"
+        effect="dark"
+        class="live-tag"
+        >LIVE</el-tag
+      >
     </div>
-
-    <!-- Log box -->
     <div class="log-card card">
       <div
         class="log-box"
         ref="logBox"
         v-loading="loading"
-        element-loading-text="Loading logs...">
+        element-loading-text="Loading logs..."
+      >
         <template v-if="filteredLines.length > 0">
           <div
             v-for="(line, i) in filteredLines"
             :key="i"
-            :class="['log-line', lineClass(line)]">
+            :class="['log-line', lineClass(line)]"
+          >
             <span class="line-num">{{ lineOffset + i + 1 }}</span>
             <span class="line-text">{{ line }}</span>
           </div>
@@ -92,7 +92,8 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Refresh, Delete } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
+import { getToken } from "@/utils/authStorage";
 import { WS_BASE_URL } from "@/constants";
 
 const files = ref([]);
@@ -105,9 +106,6 @@ const autoScroll = ref(true);
 const isLive = ref(false);
 const socket = ref(null);
 const logBox = ref(null);
-
-// When filter is active line numbers start from 0 in the filtered set;
-// when no filter, offset matches the tail window position
 const lineOffset = computed(() => 0);
 
 const filteredLines = computed(() => {
@@ -126,7 +124,7 @@ function lineClass(line) {
 
 async function loadFiles() {
   try {
-    const { data } = await api.listBackendLogFiles();
+    const { data } = await apiClient.get("/backend-logs");
     files.value = data.data || [];
     if (files.value.length > 0 && !selectedFile.value) {
       selectedFile.value = files.value[0];
@@ -139,13 +137,10 @@ async function loadFiles() {
 
 async function loadLines() {
   if (!selectedFile.value) return;
-  // If we're toggling file but live is on, maybe we should stop live?
-  // Or just allow it. For now, we'll let it fetch the file.
   loading.value = true;
   try {
-    const { data } = await api.getBackendLogFile(
-      selectedFile.value,
-      tailCount.value,
+    const { data } = await apiClient.get(
+      `/backend-logs/file?file=${encodeURIComponent(selectedFile.value)}&tail=${tailCount.value}`,
     );
     lines.value = data.data || [];
     scrollToBottom();
@@ -174,36 +169,26 @@ function toggleLive() {
 }
 
 function connectLive() {
-  const token = localStorage.getItem("mc_token");
+  const token = getToken();
   if (!token) {
-    ElMessage.error("Session expired. Please login again.");
     isLive.value = false;
     return;
   }
-
   const url = `${WS_BASE_URL}/ws/backend-logs?token=${token}`;
   socket.value = new WebSocket(url);
-
   socket.value.onopen = () => {
     ElMessage.success("Connected to live logs");
   };
-
   socket.value.onmessage = (event) => {
     lines.value.push(event.data);
-    if (lines.value.length > tailCount.value) {
-      lines.value.shift();
-    }
+    if (lines.value.length > tailCount.value) lines.value.shift();
     scrollToBottom();
   };
-
   socket.value.onclose = () => {
     isLive.value = false;
     socket.value = null;
   };
-
-  socket.value.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    ElMessage.error("Live log connection error");
+  socket.value.onerror = () => {
     isLive.value = false;
   };
 }
@@ -218,10 +203,7 @@ function disconnectLive() {
 function clearView() {
   lines.value = [];
 }
-
-// Auto-scroll when filteredLines changes and autoScroll is on
 watch(filteredLines, scrollToBottom);
-
 onMounted(loadFiles);
 onUnmounted(disconnectLive);
 </script>
@@ -232,8 +214,6 @@ onUnmounted(disconnectLive);
   flex-direction: column;
   gap: 16px;
 }
-
-/* ─── Toolbar ─── */
 .toolbar {
   display: flex;
   align-items: center;
@@ -242,7 +222,6 @@ onUnmounted(disconnectLive);
   gap: 12px;
   padding: 16px 20px;
 }
-
 .toolbar-left,
 .toolbar-right {
   display: flex;
@@ -250,8 +229,6 @@ onUnmounted(disconnectLive);
   gap: 10px;
   flex-wrap: wrap;
 }
-
-/* ─── Stats bar ─── */
 .stats-bar {
   display: flex;
   align-items: center;
@@ -260,32 +237,31 @@ onUnmounted(disconnectLive);
   color: var(--el-text-color-secondary);
   padding: 0 4px;
 }
-
 .stat strong {
   color: var(--el-text-color-primary);
 }
-
 .stat-sep {
   color: var(--el-border-color);
 }
-
 .live-tag {
   margin-left: 8px;
   animation: pulse 2s infinite;
 }
-
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
-
-/* ─── Log card / box ─── */
 .log-card {
   padding: 0;
   overflow: hidden;
 }
-
 .log-box {
   height: calc(100vh - 280px);
   min-height: 400px;
@@ -297,18 +273,15 @@ onUnmounted(disconnectLive);
   background: #0f1117;
   color: #d1d5db;
 }
-
 .log-line {
   display: flex;
   gap: 12px;
   padding: 1px 0;
 }
-
 .log-line:hover {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 3px;
 }
-
 .line-num {
   color: #4b5563;
   user-select: none;
@@ -316,21 +289,17 @@ onUnmounted(disconnectLive);
   text-align: right;
   flex-shrink: 0;
 }
-
 .line-text {
   white-space: pre-wrap;
   word-break: break-all;
   flex: 1;
 }
-
 .log-empty {
   color: #4b5563;
   font-style: italic;
   text-align: center;
   margin-top: 60px;
 }
-
-/* ─── Level colours ─── */
 .log-error .line-text {
   color: #f87171;
 }

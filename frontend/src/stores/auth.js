@@ -1,20 +1,34 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
-import serverApi from "@/api";
+import { ref, computed } from "vue";
+import { getToken, setToken, clearAuthSession, getUser, setUser } from "@/utils/authStorage";
+import apiClient from "@/api/client";
 
 export const useAuthStore = defineStore("auth", () => {
-  const token = ref(localStorage.getItem("mc_token") || "");
-  const username = ref(localStorage.getItem("mc_username") || "");
-  const role = ref(localStorage.getItem("mc_role") || "");
+  const token = ref(getToken() || "");
+  const username = ref("");
+  const role = ref("");
 
-  const isLoggedIn = () => !!token.value;
+  // Restore persisted user on init
+  const storedUser = getUser();
+  if (storedUser) {
+    username.value = storedUser.username || "";
+    role.value = storedUser.role || "";
+  }
+
+  const isLoggedIn = computed(() => !!token.value);
 
   async function login(user, pass) {
-    const res = await serverApi.login(user, pass);
-    token.value = res.data.token;
-    username.value = res.data.username;
-    role.value = res.data.role || "admin";
-    localStorage.setItem("mc_token", token.value);
+    const res = await apiClient.post("/auth/login", { username: user, password: pass });
+    if (!res.data || !res.data.success || !res.data.data) {
+      throw new Error(res.data?.message || "Login failed");
+    }
+    const payload = res.data.data;
+    token.value = payload.token;
+    username.value = payload.username;
+    role.value = payload.role || "admin";
+    setToken(token.value);
+    setUser({ username: username.value, role: role.value });
+    // Keep legacy keys for backward compatibility
     localStorage.setItem("mc_username", username.value);
     localStorage.setItem("mc_role", role.value);
   }
@@ -23,9 +37,7 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = "";
     username.value = "";
     role.value = "";
-    localStorage.removeItem("mc_token");
-    localStorage.removeItem("mc_username");
-    localStorage.removeItem("mc_role");
+    clearAuthSession();
   }
 
   return { token, username, role, isLoggedIn, login, logout };

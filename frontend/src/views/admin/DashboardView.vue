@@ -6,8 +6,16 @@
         <p class="page-subtitle">Real-time status of your Minecraft network.</p>
       </div>
       <div class="header-actions">
-        <el-button round :icon="Plus" type="primary" @click="showCreate = true">New Server</el-button>
-        <el-button round :icon="Refresh" @click="refreshAll" :loading="store.loading">Refresh</el-button>
+        <el-button round :icon="Plus" type="primary" @click="showCreate = true"
+          >New Server</el-button
+        >
+        <el-button
+          round
+          :icon="Refresh"
+          @click="refreshAll"
+          :loading="store.loading"
+          >Refresh</el-button
+        >
       </div>
     </div>
 
@@ -16,7 +24,9 @@
       <div class="stat-card glass-card float-hover">
         <div class="stat-header">
           <span class="stat-title">Instances</span>
-          <div class="stat-icon green"><el-icon size="20"><Grid /></el-icon></div>
+          <div class="stat-icon green">
+            <el-icon size="20"><Grid /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">{{ store.servers.length }}</div>
@@ -29,27 +39,37 @@
       <div class="stat-card glass-card float-hover">
         <div class="stat-header">
           <span class="stat-title">Active Now</span>
-          <div class="stat-icon emerald"><el-icon size="20"><CircleCheck /></el-icon></div>
+          <div class="stat-icon emerald">
+            <el-icon size="20"><CircleCheck /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">{{ store.runningCount }}</div>
           <div class="stat-badge success">{{ activePercentage }}% Online</div>
         </div>
         <div class="stat-progress-bg">
-          <div class="stat-progress-bar success" :style="{ width: activePercentage + '%' }"></div>
+          <div
+            class="stat-progress-bar success"
+            :style="{ width: activePercentage + '%' }"
+          ></div>
         </div>
       </div>
       <div class="stat-card glass-card float-hover">
         <div class="stat-header">
           <span class="stat-title">Node Load</span>
-          <div class="stat-icon amber"><el-icon size="20"><Cpu /></el-icon></div>
+          <div class="stat-icon amber">
+            <el-icon size="20"><Cpu /></el-icon>
+          </div>
         </div>
         <div class="stat-main">
           <div class="stat-value">{{ mockCpu }}%</div>
           <div class="stat-badge warning">Optimal</div>
         </div>
         <div class="stat-progress-bg">
-          <div class="stat-progress-bar warning" :style="{ width: mockCpu + '%' }"></div>
+          <div
+            class="stat-progress-bar warning"
+            :style="{ width: mockCpu + '%' }"
+          ></div>
         </div>
       </div>
     </div>
@@ -61,11 +81,11 @@
         <div class="section-header">
           <h3 class="section-title">Server Fleet</h3>
           <div class="header-tools">
-             <el-radio-group v-model="filterEdition" size="small">
-               <el-radio-button label="all">All</el-radio-button>
-               <el-radio-button label="java">Java</el-radio-button>
-               <el-radio-button label="bedrock">Bedrock</el-radio-button>
-             </el-radio-group>
+            <el-radio-group v-model="filterEdition" size="small">
+              <el-radio-button label="all">All</el-radio-button>
+              <el-radio-button label="java">Java</el-radio-button>
+              <el-radio-button label="bedrock">Bedrock</el-radio-button>
+            </el-radio-group>
           </div>
         </div>
 
@@ -80,15 +100,18 @@
             :key="server.id"
             :server="server"
             @start="handleStart"
-            @stop="handleStop" />
+            @stop="handleStop"
+          />
         </div>
 
         <div v-else class="empty-state glass-card">
           <div class="empty-icon">🎮</div>
           <h3>No Fleet Members</h3>
           <p>Your fleet is currently empty. Deploy a new instance to begin.</p>
-          <br/>
-          <el-button type="primary" round @click="showCreate = true">Deploy Instance</el-button>
+          <br />
+          <el-button type="primary" round @click="showCreate = true"
+            >Deploy Instance</el-button
+          >
         </div>
       </div>
 
@@ -98,23 +121,32 @@
         <div class="widget-container glass-card">
           <div class="widget-header">
             <h4>Live Feed</h4>
-            <el-button link @click="$router.push('/audit-logs')">Timeline</el-button>
+            <el-button link @click="$router.push('/audit-logs')"
+              >Timeline</el-button
+            >
           </div>
           <div class="activity-timeline" v-loading="loadingLogs">
             <div v-for="log in recentLogs" :key="log.id" class="timeline-item">
-              <div class="timeline-node" :class="getActionClass(log.action)"></div>
+              <div
+                class="timeline-node"
+                :class="getActionClass(log.action)"
+              ></div>
               <div class="timeline-content">
                 <div class="timeline-header">
                   <span class="actor">{{ log.user }}</span>
                   <span class="time">{{ formatTime(log.timestamp) }}</span>
                 </div>
                 <p class="action-desc">
-                  {{ log.action.toLowerCase().replace(/_/g, ' ') }} 
+                  {{ log.action.toLowerCase().replace(/_/g, " ") }}
                   <span class="target">{{ log.target }}</span>
                 </p>
               </div>
             </div>
-            <el-empty v-if="recentLogs.length === 0" :image-size="40" description="Quiet for now" />
+            <el-empty
+              v-if="recentLogs.length === 0"
+              :image-size="40"
+              description="Quiet for now"
+            />
           </div>
         </div>
 
@@ -122,7 +154,9 @@
         <div class="widget-container glass-card resource-widget">
           <div class="widget-header">
             <h4>Resources</h4>
-            <el-tag size="small" type="success" effect="dark" round>HEALTHY</el-tag>
+            <el-tag size="small" type="success" effect="dark" round
+              >HEALTHY</el-tag
+            >
           </div>
           <div class="resource-meters">
             <div class="meter-item">
@@ -130,28 +164,44 @@
                 <span>Memory usage</span>
                 <span>{{ ramPercentage }}%</span>
               </div>
-              <el-progress :percentage="ramPercentage" :show-text="false" stroke-width="8" color="#10b981" />
+              <el-progress
+                :percentage="ramPercentage"
+                :show-text="false"
+                stroke-width="8"
+                color="#10b981"
+              />
             </div>
             <div class="meter-item">
               <div class="meter-labels">
                 <span>CPU overhead</span>
                 <span>{{ mockCpu }}%</span>
               </div>
-              <el-progress :percentage="mockCpu" :show-text="false" stroke-width="8" :color="cpuColors" />
+              <el-progress
+                :percentage="mockCpu"
+                :show-text="false"
+                stroke-width="8"
+                :color="cpuColors"
+              />
             </div>
           </div>
         </div>
 
         <!-- System Actions -->
         <div class="quick-grid">
-           <div class="quick-box glass-card float-hover" @click="$router.push('/schedules')">
-              <el-icon><Calendar /></el-icon>
-              <span>Tasks</span>
-           </div>
-           <div class="quick-box glass-card float-hover" @click="$router.push('/backups')">
-              <el-icon><Box /></el-icon>
-              <span>Safety</span>
-           </div>
+          <div
+            class="quick-box glass-card float-hover"
+            @click="$router.push('/schedules')"
+          >
+            <el-icon><Calendar /></el-icon>
+            <span>Tasks</span>
+          </div>
+          <div
+            class="quick-box glass-card float-hover"
+            @click="$router.push('/backups')"
+          >
+            <el-icon><Box /></el-icon>
+            <span>Safety</span>
+          </div>
         </div>
       </div>
     </div>
@@ -159,7 +209,8 @@
     <CreateServerModal
       v-if="showCreate"
       @close="showCreate = false"
-      @created="handleCreated" />
+      @created="handleCreated"
+    />
   </div>
 </template>
 
@@ -167,11 +218,17 @@
 import { ref, onMounted, computed } from "vue";
 import { ElMessage } from "element-plus";
 import {
-  Plus, Grid, CircleCheck, Refresh,
-  Cpu, Loading, Calendar, Box
+  Plus,
+  Grid,
+  CircleCheck,
+  Refresh,
+  Cpu,
+  Loading,
+  Calendar,
+  Box,
 } from "@element-plus/icons-vue";
 import { useServersStore } from "@/stores/servers";
-import api from "@/api";
+import apiClient from "@/api/client";
 import ServerCard from "@/components/servers/ServerCard.vue";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
 
@@ -183,20 +240,20 @@ const filterEdition = ref("all");
 
 const mockCpu = ref(Math.floor(Math.random() * 15) + 3);
 const cpuColors = [
-  { color: '#10b981', percentage: 20 },
-  { color: '#e6a23c', percentage: 40 },
-  { color: '#f56c6c', percentage: 80 },
+  { color: "#10b981", percentage: 20 },
+  { color: "#e6a23c", percentage: 40 },
+  { color: "#f56c6c", percentage: 80 },
 ];
 
 const filteredServers = computed(() => {
   if (filterEdition.value === "all") return store.servers;
-  return store.servers.filter(s => s.edition === filterEdition.value);
+  return store.servers.filter((s) => s.edition === filterEdition.value);
 });
 
 const recentLogs = computed(() => logs.value.slice(0, 6));
 
 const uniqueEditions = computed(() => {
-  const eds = new Set(store.servers.map(s => s.edition));
+  const eds = new Set(store.servers.map((s) => s.edition));
   return eds.size;
 });
 
@@ -207,15 +264,18 @@ const activePercentage = computed(() => {
 
 const ramPercentage = computed(() => {
   if (store.servers.length === 0) return 10;
-  const totalUsed = store.servers.reduce((acc, s) => s.status === 'running' ? acc + (s.memory_mb || 0) : acc, 0);
-  const max = 16384; 
+  const totalUsed = store.servers.reduce(
+    (acc, s) => (s.status === "running" ? acc + (s.memory_mb || 0) : acc),
+    0,
+  );
+  const max = 16384;
   return Math.min(Math.round((totalUsed / max) * 100), 100);
 });
 
 async function fetchLogs() {
   loadingLogs.value = true;
   try {
-    const res = await api.getAuditLogs();
+    const res = await apiClient.get("/audit-logs");
     logs.value = res.data.data || [];
   } catch (e) {
     console.error("Feed error:", e);
@@ -257,15 +317,15 @@ function formatTime(iso) {
   const d = new Date(iso);
   const now = new Date();
   const diff = (now - d) / 1000;
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function getActionClass(action) {
-  if (action.includes('START') || action.includes('CREATE')) return 'success';
-  if (action.includes('STOP') || action.includes('DELETE')) return 'danger';
-  return 'info';
+  if (action.includes("START") || action.includes("CREATE")) return "success";
+  if (action.includes("STOP") || action.includes("DELETE")) return "danger";
+  return "info";
 }
 
 onMounted(() => {
@@ -338,9 +398,18 @@ onMounted(() => {
   justify-content: center;
 }
 
-.stat-icon.green { background: rgba(16, 185, 129, 0.15); color: var(--color-primary); }
-.stat-icon.emerald { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
-.stat-icon.amber { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.stat-icon.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-primary);
+}
+.stat-icon.emerald {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+.stat-icon.amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
 
 .stat-main {
   display: flex;
@@ -366,8 +435,14 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
-.stat-badge.success { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
-.stat-badge.warning { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.stat-badge.success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+.stat-badge.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
 
 .stat-progress-bg {
   height: 6px;
@@ -382,8 +457,12 @@ onMounted(() => {
   border-radius: 100px;
 }
 
-.stat-progress-bar.success { background: #16a34a; }
-.stat-progress-bar.warning { background: #d97706; }
+.stat-progress-bar.success {
+  background: #16a34a;
+}
+.stat-progress-bar.warning {
+  background: #d97706;
+}
 
 /* ─── Layout ─── */
 .dashboard-layout {
@@ -448,7 +527,7 @@ onMounted(() => {
 }
 
 .timeline-item:not(:last-child)::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 6px;
   top: 18px;
@@ -467,9 +546,15 @@ onMounted(() => {
   z-index: 1;
 }
 
-.timeline-node.success { background: var(--color-success); }
-.timeline-node.danger { background: var(--color-danger); }
-.timeline-node.info { background: var(--color-primary); }
+.timeline-node.success {
+  background: var(--color-success);
+}
+.timeline-node.danger {
+  background: var(--color-danger);
+}
+.timeline-node.info {
+  background: var(--color-primary);
+}
 
 .timeline-content {
   flex: 1;
@@ -553,21 +638,54 @@ onMounted(() => {
 }
 
 /* ─── States ─── */
-.empty-state { text-align: center; padding: 64px 32px; }
-.empty-icon { font-size: 48px; margin-bottom: 20px; }
-.center-state { text-align: center; padding: 48px 0; color: var(--color-text-muted); font-weight: 500; }
-.spin { animation: rotate 1.5s linear infinite; }
-@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.empty-state {
+  text-align: center;
+  padding: 64px 32px;
+}
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+.center-state {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+.spin {
+  animation: rotate 1.5s linear infinite;
+}
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 @media (max-width: 1150px) {
-  .dashboard-layout { grid-template-columns: 1fr; }
-  .layout-side { display: grid; grid-template-columns: 1fr 1fr; }
-  .quick-grid { grid-column: span 2; }
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+  .layout-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .quick-grid {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 768px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .layout-side { grid-template-columns: 1fr; }
-  .quick-grid { grid-column: span 1; }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .layout-side {
+    grid-template-columns: 1fr;
+  }
+  .quick-grid {
+    grid-column: span 1;
+  }
 }
 </style>

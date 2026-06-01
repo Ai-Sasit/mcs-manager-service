@@ -38,7 +38,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           source: frontend/dist/*
           target: /tmp/mc-manage-frontend/
@@ -49,7 +49,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           script: |
             set -e
@@ -71,7 +71,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           script: |
             mkdir -p /tmp/mc-manage-database
@@ -82,7 +82,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           source: database/
           target: /tmp/mc-manage-database/
@@ -93,7 +93,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           script: |
             set -e
@@ -104,7 +104,7 @@ jobs:
 
             sudo tee "$DB_DIR/.env" <<EOF > /dev/null
             MONGO_INITDB_PORT=${{ vars.MONGO_INITDB_PORT || '27017' }}
-            MONGO_INITDB_ROOT_PASSWORD=${{ vars.MONGO_INITDB_ROOT_PASSWORD }}
+            MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
             MONGO_INITDB_DATABASE=${{ vars.MONGO_INITDB_DATABASE || 'mc-manage' }}
             EOF
             sudo chmod 600 "$DB_DIR/.env"
@@ -141,7 +141,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           source: backend/mc-manage-backend
           target: /tmp/mc-manage/
@@ -152,7 +152,7 @@ jobs:
         with:
           host: ${{ vars.VPS_HOST }}
           username: ${{ vars.VPS_USER }}
-          key: ${{ vars.VPS_SSH_KEY }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ vars.VPS_PORT || 22 }}
           script: |
             set -e
@@ -166,12 +166,12 @@ jobs:
 
             sudo tee "$INSTALL_DIR/.env" <<EOF > /dev/null
             ADMIN_USERNAME=${{ vars.ADMIN_USERNAME || 'admin' }}
-            ADMIN_PASSWORD=${{ vars.ADMIN_PASSWORD }}
-            JWT_SECRET=${{ vars.JWT_SECRET }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
             PORT=${{ vars.BACKEND_PORT || '8080' }}
             DEBUG_MODE=${{ vars.DEBUG_MODE || 'false' }}
             MONGO_DB_NAME=${{ vars.MONGO_DB_NAME || 'mc-manage' }}
-            MONGO_URI=${{ vars.MONGO_URI }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
             EOF
             sudo chmod 600 "$INSTALL_DIR/.env"
             sudo chown root:root "$INSTALL_DIR/.env"
@@ -195,7 +195,7 @@ jobs:
             ExecStart=/opt/mc-manage/backend/mc-manage-backend
             Restart=always
             RestartSec=5
-            Environment=PORT=8080
+            Environment=PORT=${{ vars.BACKEND_PORT || '8080' }}
 
             [Install]
             WantedBy=multi-user.target

@@ -3,15 +3,23 @@
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title">Plugins & Addons</h2>
-        <p class="page-subtitle">Extend your server with custom features and modifications.</p>
+        <p class="page-subtitle">
+          Extend your server with custom features and modifications.
+        </p>
       </div>
       <div class="header-actions">
-        <el-select v-model="selectedServerId" placeholder="Select Server" @change="fetchPlugins" style="width: 250px">
+        <el-select
+          v-model="selectedServerId"
+          placeholder="Select Server"
+          @change="fetchPlugins"
+          style="width: 250px"
+        >
           <el-option
             v-for="server in servers"
             :key="server.id"
             :label="server.name"
-            :value="server.id" />
+            :value="server.id"
+          />
         </el-select>
         <el-upload
           v-if="selectedServerId"
@@ -25,7 +33,12 @@
         >
           <el-button :icon="Upload" type="primary">Upload Plugin</el-button>
         </el-upload>
-        <el-button :icon="Refresh" @click="fetchPlugins" :loading="loading" :disabled="!selectedServerId">
+        <el-button
+          :icon="Refresh"
+          @click="fetchPlugins"
+          :loading="loading"
+          :disabled="!selectedServerId"
+        >
           Refresh
         </el-button>
       </div>
@@ -46,9 +59,17 @@
             {{ formatSize(row.size) }}
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="120" fixed="right" align="center">
+        <el-table-column
+          label="Actions"
+          width="120"
+          fixed="right"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-popconfirm title="Delete this plugin?" @confirm="deletePlugin(row.name)">
+            <el-popconfirm
+              title="Delete this plugin?"
+              @confirm="deletePlugin(row.name)"
+            >
               <template #reference>
                 <el-button :icon="Delete" type="danger" size="small" plain />
               </template>
@@ -56,7 +77,10 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="plugins.length === 0 && !loading" description="No plugins found on this server" />
+      <el-empty
+        v-if="plugins.length === 0 && !loading"
+        description="No plugins found on this server"
+      />
     </el-card>
 
     <div v-else class="center-placeholder card">
@@ -69,8 +93,9 @@
 import { ref, onMounted, computed } from "vue";
 import { Upload, Refresh, Delete, Connection } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import api from "@/api";
+import apiClient from "@/api/client";
 import { API_BASE_URL } from "@/constants";
+import { getToken } from "@/utils/authStorage";
 import { useServersStore } from "@/stores/servers";
 
 const store = useServersStore();
@@ -85,7 +110,7 @@ const uploadUrl = computed(() => {
 });
 
 const uploadHeaders = computed(() => {
-  const token = localStorage.getItem("mc_token");
+  const token = getToken();
   return {
     Authorization: `Bearer ${token}`,
   };
@@ -95,7 +120,9 @@ async function fetchPlugins() {
   if (!selectedServerId.value) return;
   loading.value = true;
   try {
-    const { data } = await api.listPlugins(selectedServerId.value);
+    const { data } = await apiClient.get(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/plugins`,
+    );
     plugins.value = data.data || [];
   } catch (e) {
     ElMessage.error("Failed to fetch plugins");
@@ -115,7 +142,9 @@ function handleUploadError() {
 
 async function deletePlugin(name) {
   try {
-    await api.deletePlugin(selectedServerId.value, name);
+    await apiClient.delete(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/plugins/${encodeURIComponent(name)}`,
+    );
     ElMessage.success("Plugin deleted");
     fetchPlugins();
   } catch (e) {

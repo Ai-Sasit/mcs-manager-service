@@ -18,17 +18,17 @@
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.edition === 'java' }"
-                  @click="setEdition('java')">
-                  ☕
-                  <span>Java</span>
+                  @click="setEdition('java')"
+                >
+                  ☕ <span>Java</span>
                 </button>
                 <button
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.edition === 'bedrock' }"
-                  @click="setEdition('bedrock')">
-                  💎
-                  <span>Bedrock</span>
+                  @click="setEdition('bedrock')"
+                >
+                  💎 <span>Bedrock</span>
                 </button>
               </div>
             </div>
@@ -40,25 +40,25 @@
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'vanilla' }"
-                  @click="form.server_type = 'vanilla'">
-                  🟢
-                  <span>Vanilla</span>
+                  @click="form.server_type = 'vanilla'"
+                >
+                  🟢 <span>Vanilla</span>
                 </button>
                 <button
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'paper' }"
-                  @click="form.server_type = 'paper'">
-                  📄
-                  <span>Paper</span>
+                  @click="form.server_type = 'paper'"
+                >
+                  📄 <span>Paper</span>
                 </button>
                 <button
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'spigot' }"
-                  @click="form.server_type = 'spigot'">
-                  🔧
-                  <span>Spigot</span>
+                  @click="form.server_type = 'spigot'"
+                >
+                  🔧 <span>Spigot</span>
                 </button>
               </div>
               <p class="type-hint" v-if="form.server_type === 'paper'">
@@ -79,14 +79,16 @@
                 placeholder="Select version..."
                 :loading="loadingVersions"
                 size="large"
-                style="width: 100%">
+                style="width: 100%"
+              >
                 <el-option
                   v-for="v in versions"
                   :key="v.id"
                   :label="
                     form.edition === 'bedrock' ? `Latest (${v.id})` : v.id
                   "
-                  :value="v.id" />
+                  :value="v.id"
+                />
               </el-select>
             </div>
 
@@ -96,7 +98,8 @@
                 v-model="form.name"
                 placeholder="production-server-1"
                 maxlength="50"
-                size="large" />
+                size="large"
+              />
             </div>
 
             <div class="form-row">
@@ -108,7 +111,8 @@
                   :max="65535"
                   controls-position="right"
                   size="large"
-                  style="width: 100%" />
+                  style="width: 100%"
+                />
               </div>
               <div class="form-group">
                 <label>Max Players</label>
@@ -118,7 +122,8 @@
                   :max="1000"
                   controls-position="right"
                   size="large"
-                  style="width: 100%" />
+                  style="width: 100%"
+                />
               </div>
             </div>
 
@@ -130,7 +135,8 @@
                 :step="256"
                 controls-position="right"
                 size="large"
-                style="width: 100%" />
+                style="width: 100%"
+              />
             </div>
 
             <el-alert
@@ -138,14 +144,16 @@
               :title="error"
               type="error"
               show-icon
-              :closable="false" />
+              :closable="false"
+            />
 
             <el-button
               type="primary"
               size="large"
               class="submit-btn"
               :loading="creating"
-              native-type="submit">
+              native-type="submit"
+            >
               {{ creating ? "Deploying..." : "Deploy Server" }}
             </el-button>
           </form>
@@ -158,7 +166,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { Close } from "@element-plus/icons-vue";
-import api from "@/api";
+import apiClient from "@/api/client";
 import {
   DEFAULT_JAVA_PORT,
   DEFAULT_BEDROCK_PORT,
@@ -189,11 +197,9 @@ async function fetchVersions() {
   try {
     const { data } =
       form.value.edition === "java"
-        ? await api.getJavaVersions()
-        : await api.getBedrockVersions();
+        ? await apiClient.get("/versions/java")
+        : await apiClient.get("/versions/bedrock");
     versions.value = data.data || [];
-
-    // Auto-select Bedrock version
     if (form.value.edition === "bedrock" && versions.value.length > 0) {
       form.value.version = versions.value[0].id;
     }
@@ -216,7 +222,7 @@ async function handleCreate() {
   creating.value = true;
   error.value = null;
   try {
-    const { data } = await api.createServer(form.value);
+    const { data } = await apiClient.post("/servers", form.value);
     if (data.success) {
       emit("created", data.data);
       emit("close");
@@ -245,7 +251,6 @@ onMounted(fetchVersions);
   z-index: 1000;
   padding: 24px;
 }
-
 .modal {
   width: 100%;
   max-width: 520px;
@@ -258,7 +263,6 @@ onMounted(fetchVersions);
   padding: 32px;
   animation: modalIn 0.25s ease-out;
 }
-
 @keyframes modalIn {
   from {
     opacity: 0;
@@ -269,21 +273,18 @@ onMounted(fetchVersions);
     transform: scale(1) translateY(0);
   }
 }
-
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 28px;
 }
-
 .modal-header h2 {
   font-size: 18px;
   font-weight: 600;
   color: var(--color-text);
   margin: 0;
 }
-
 .close-btn {
   width: 32px;
   height: 32px;
@@ -297,42 +298,35 @@ onMounted(fetchVersions);
   color: var(--color-text-secondary);
   transition: all 0.15s ease;
 }
-
 .close-btn:hover {
   background: var(--color-bg);
   color: var(--color-text);
 }
-
 .modal-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-
 label {
   font-weight: 500;
   color: var(--color-text);
   font-size: 14px;
 }
-
 .edition-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-
 .edition-btn {
   display: flex;
   flex-direction: column;
@@ -349,31 +343,26 @@ label {
   font-size: 14px;
   color: var(--color-text-secondary);
 }
-
 .edition-btn:hover {
   border-color: var(--color-text-muted);
   background: var(--color-bg);
 }
-
 .edition-btn.active {
   border-color: var(--color-primary);
   background: rgba(16, 185, 129, 0.04);
   color: var(--color-primary);
 }
-
 .type-hint {
   font-size: 12px;
   color: var(--color-text-muted);
   margin: 2px 0 0;
 }
-
 .submit-btn {
   width: 100%;
   height: 44px;
   font-weight: 600 !important;
   margin-top: 4px;
 }
-
 :deep(.el-input-number .el-input__wrapper) {
   padding-left: 12px;
 }

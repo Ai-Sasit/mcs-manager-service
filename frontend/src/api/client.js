@@ -1,27 +1,33 @@
 import axios from "axios";
-import { API_BASE_URL, API_TIMEOUT } from "@/constants";
+import { clearAuthSession, getToken } from "@/utils/authStorage";
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("mc_token");
+  const token = getToken();
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers["Authorization"] = `Bearer ${token}`;
   }
   return config;
 });
 
 apiClient.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem("mc_token");
-      window.location.href = "/login";
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      clearAuthSession();
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
     }
-    return Promise.reject(err);
+
+    return Promise.reject(error);
   },
 );
 

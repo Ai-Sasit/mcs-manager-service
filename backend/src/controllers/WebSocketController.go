@@ -82,8 +82,16 @@ func WsTerminal(c fiber.Ctx) error {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			for line := range ch {
-				if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+			for {
+				select {
+				case line, ok := <-ch:
+					if !ok {
+						return
+					}
+					if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+						return
+					}
+				case <-done:
 					return
 				}
 			}
@@ -103,7 +111,8 @@ func WsTerminal(c fiber.Ctx) error {
 			}
 		}
 
-		// Wait for log streaming goroutine to finish
+		// Signal done and wait for log streaming goroutine to finish
+		close(done)
 		<-done
 	})
 
