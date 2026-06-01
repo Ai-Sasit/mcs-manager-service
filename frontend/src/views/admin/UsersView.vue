@@ -92,6 +92,7 @@ import { ref, onMounted } from "vue";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import apiClient from "@/api/client";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const users = ref([]);
 const loading = ref(false);
@@ -107,8 +108,9 @@ async function loadUsers() {
   try {
     const { data } = await apiClient.get("/users");
     users.value = data.data || [];
-  } catch {
+  } catch (e) {
     users.value = [];
+    ElMessage.error("Failed to load users: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -149,7 +151,7 @@ async function handleSave() {
     dialogVisible.value = false;
     loadUsers();
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || e.message);
+    ElMessage.error(getApiErrorMessage(e));
   } finally {
     saving.value = false;
   }
@@ -171,7 +173,7 @@ async function handleDelete(row) {
     ElMessage.success("User deleted.");
     loadUsers();
   } catch (e) {
-    if (e !== "cancel") ElMessage.error(e.response?.data?.message || e.message);
+    if (e !== "cancel") ElMessage.error(getApiErrorMessage(e));
   }
 }
 

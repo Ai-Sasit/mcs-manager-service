@@ -53,7 +53,7 @@ import { PhCube, PhSquaresFour } from "@phosphor-icons/vue";
 .logo-text {
   font-size: 1.1rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .nav {

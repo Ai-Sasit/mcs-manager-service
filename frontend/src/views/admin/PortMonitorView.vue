@@ -211,6 +211,7 @@ import {
 import { useServersStore } from "@/stores/servers";
 import { ElMessageBox, ElMessage } from "element-plus";
 import apiClient from "@/api/client";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const loading = ref(false);
@@ -241,8 +242,7 @@ async function handleSearch() {
     );
     searchResult.value = res.data.data;
   } catch (e) {
-    searchError.value =
-      e.response?.data?.message || "No process found on this port.";
+    searchError.value = getApiErrorMessage(e, "No process found on this port.");
   } finally {
     searchLoading.value = false;
   }
@@ -268,7 +268,7 @@ async function handleKillPid(pid) {
     await store.fetchServers();
   } catch (e) {
     if (e !== "cancel") {
-      ElMessage.error(e.response?.data?.message || "Failed to kill process");
+      ElMessage.error(getApiErrorMessage(e, "Failed to kill process"));
     }
   } finally {
     loading.value = false;
@@ -294,7 +294,7 @@ async function handleKill(server) {
     await store.fetchServers();
   } catch (e) {
     if (e !== "cancel") {
-      ElMessage.error("Failed to kill process");
+      ElMessage.error(getApiErrorMessage(e, "Failed to kill process"));
     }
   } finally {
     loading.value = false;
@@ -369,7 +369,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .stat-icon {
@@ -453,7 +453,7 @@ onMounted(() => {
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .meta-item .value {

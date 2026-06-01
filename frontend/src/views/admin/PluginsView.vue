@@ -97,6 +97,7 @@ import apiClient from "@/api/client";
 import { API_BASE_URL } from "@/constants";
 import { getToken } from "@/utils/authStorage";
 import { useServersStore } from "@/stores/servers";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const selectedServerId = ref("");
@@ -125,7 +126,7 @@ async function fetchPlugins() {
     );
     plugins.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to fetch plugins");
+    ElMessage.error("Failed to fetch plugins: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -136,8 +137,8 @@ function handleUploadSuccess() {
   fetchPlugins();
 }
 
-function handleUploadError() {
-  ElMessage.error("Failed to upload plugin");
+function handleUploadError(error) {
+  ElMessage.error("Failed to upload plugin: " + getApiErrorMessage(error));
 }
 
 async function deletePlugin(name) {
@@ -148,7 +149,7 @@ async function deletePlugin(name) {
     ElMessage.success("Plugin deleted");
     fetchPlugins();
   } catch (e) {
-    ElMessage.error("Failed to delete plugin");
+    ElMessage.error("Failed to delete plugin: " + getApiErrorMessage(e));
   }
 }
 

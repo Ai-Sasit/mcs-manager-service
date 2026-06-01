@@ -106,6 +106,7 @@ import { ref, onMounted } from "vue";
 import { Check } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const form = ref({
   app_name: "",
@@ -122,7 +123,7 @@ async function fetchSettings() {
     const { data } = await apiClient.get("/settings");
     form.value = data.data;
   } catch (e) {
-    ElMessage.error("Failed to load settings");
+    ElMessage.error("Failed to load settings: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -134,7 +135,7 @@ async function saveSettings() {
     await apiClient.put("/settings", form.value);
     ElMessage.success("Global settings updated successfully");
   } catch (e) {
-    ElMessage.error("Failed to update settings");
+    ElMessage.error("Failed to update settings: " + getApiErrorMessage(e));
   } finally {
     saving.value = false;
   }

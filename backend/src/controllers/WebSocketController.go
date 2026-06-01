@@ -167,3 +167,52 @@ func WsBackendLogs(c fiber.Ctx) error {
 	}
 	return nil
 }
+
+func WsServerSetup(c fiber.Ctx) error {
+	jobID := c.Params("job_id")
+	job, ok := state.SetupJobs().Get(jobID)
+	if !ok {
+		return c.Status(fiber.StatusNotFound).SendString("Setup job not found")
+	}
+
+	logger.Info("[WsServerSetup] Client connected job="+jobID, nil)
+	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+		defer conn.Close()
+
+		ch, unsubscribe := job.Subscribe()
+		defer func() {
+			unsubscribe()
+			logger.Info("[WsServerSetup] Client disconnected job="+jobID, nil)
+		}()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					return
+				}
+			}
+		}()
+
+		for {
+			select {
+			case event, ok := <-ch:
+				if !ok {
+					return
+				}
+				if err := conn.WriteMessage(ws.TextMessage, event.JSON()); err != nil {
+					return
+				}
+			case <-done:
+				return
+			}
+		}
+	})
+
+	if err != nil {
+		logger.Error("[WsServerSetup] Upgrade failed job="+jobID+": "+err.Error(), nil)
+		return err
+	}
+	return nil
+}

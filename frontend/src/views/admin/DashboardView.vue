@@ -231,6 +231,7 @@ import { useServersStore } from "@/stores/servers";
 import apiClient from "@/api/client";
 import ServerCard from "@/components/servers/ServerCard.vue";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const showCreate = ref(false);
@@ -278,7 +279,7 @@ async function fetchLogs() {
     const res = await apiClient.get("/audit-logs");
     logs.value = res.data.data || [];
   } catch (e) {
-    console.error("Feed error:", e);
+    ElMessage.error("Failed to load live feed: " + getApiErrorMessage(e));
   } finally {
     loadingLogs.value = false;
   }
@@ -295,7 +296,7 @@ async function handleStart(id) {
     await store.startServer(id);
     await fetchLogs();
   } catch (e) {
-    ElMessage.error("Activation failed");
+    ElMessage.error("Activation failed: " + getApiErrorMessage(e));
   }
 }
 
@@ -304,7 +305,7 @@ async function handleStop(id) {
     await store.stopServer(id);
     await fetchLogs();
   } catch (e) {
-    ElMessage.error("Deactivation failed");
+    ElMessage.error("Deactivation failed: " + getApiErrorMessage(e));
   }
 }
 
@@ -386,7 +387,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
 }
 
 .stat-icon {

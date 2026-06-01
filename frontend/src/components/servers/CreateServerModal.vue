@@ -1,11 +1,11 @@
 <template>
   <teleport to="body">
     <transition name="fade">
-      <div class="modal-overlay" @click.self="$emit('close')">
+      <div class="modal-overlay" @click.self="handleClose">
         <div class="modal">
           <div class="modal-header">
             <h2>Create New Server</h2>
-            <button class="close-btn" @click="$emit('close')">
+            <button class="close-btn" :disabled="creating" @click="handleClose">
               <el-icon size="18"><Close /></el-icon>
             </button>
           </div>
@@ -147,6 +147,25 @@
               :closable="false"
             />
 
+            <div v-if="setupEvents.length" class="setup-progress">
+              <div class="progress-head">
+                <span>Installation progress</span>
+                <strong>{{ setupPercent }}%</strong>
+              </div>
+              <el-progress :percentage="setupPercent" :stroke-width="8" />
+              <div class="setup-steps">
+                <div
+                  v-for="event in setupEvents"
+                  :key="`${event.step}-${event.status}-${event.percent}`"
+                  class="setup-step"
+                  :class="event.status"
+                >
+                  <span class="step-dot"></span>
+                  <span>{{ event.message }}</span>
+                </div>
+              </div>
+            </div>
+
             <el-button
               type="primary"
               size="large"
@@ -164,15 +183,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { Close } from "@element-plus/icons-vue";
 import apiClient from "@/api/client";
+import { useServerSetupProgress } from "@/composables/useServerSetupProgress";
 import {
   DEFAULT_JAVA_PORT,
   DEFAULT_BEDROCK_PORT,
   DEFAULT_MAX_PLAYERS,
   DEFAULT_MEMORY_MB,
 } from "@/constants";
+import { getApiErrorMessage, isApiSuccess } from "@/utils/apiError";
 
 const emit = defineEmits(["close", "created"]);
 
@@ -190,6 +211,9 @@ const versions = ref([]);
 const loadingVersions = ref(false);
 const creating = ref(false);
 const error = ref(null);
+const setupEvents = ref([]);
+const setupPercent = ref(0);
+let setupSocket = null;
 
 async function fetchVersions() {
   loadingVersions.value = true;
@@ -204,7 +228,7 @@ async function fetchVersions() {
       form.value.version = versions.value[0].id;
     }
   } catch (e) {
-    console.error("Failed to fetch versions:", e);
+    error.value = getApiErrorMessage(e, "Failed to fetch versions");
   } finally {
     loadingVersions.value = false;
   }
@@ -218,25 +242,60 @@ function setEdition(edition) {
   fetchVersions();
 }
 
+function handleClose() {
+  if (creating.value) return;
+  emit("close");
+}
+
 async function handleCreate() {
   creating.value = true;
   error.value = null;
+  setupEvents.value = [];
+  setupPercent.value = 0;
+  if (setupSocket) {
+    setupSocket.disconnect();
+    setupSocket = null;
+  }
+
   try {
-    const { data } = await apiClient.post("/servers", form.value);
-    if (data.success) {
-      emit("created", data.data);
-      emit("close");
-    } else {
-      error.value = data.message;
+    const { data } = await apiClient.post("/servers/setup-jobs", form.value);
+    if (!isApiSuccess(data) || !data.data?.job_id) {
+      throw new Error(data.message || "Failed to start server setup");
     }
+
+    setupSocket = useServerSetupProgress(data.data.job_id);
+    setupSocket.onEvent((event) => {
+      setupPercent.value = Math.max(setupPercent.value, event.percent || 0);
+      setupEvents.value.push(event);
+
+      if (event.status === "failed") {
+        error.value = event.message || "Server setup failed";
+        creating.value = false;
+        setupSocket?.disconnect();
+        setupSocket = null;
+      }
+
+      if (event.status === "success" && event.step === "complete") {
+        creating.value = false;
+        emit("created", { id: event.server_id });
+        window.setTimeout(() => emit("close"), 650);
+      }
+    });
+    setupSocket.onError((message) => {
+      error.value = message;
+      creating.value = false;
+    });
+    setupSocket.connect();
   } catch (e) {
-    error.value = e.response?.data?.message || e.message;
-  } finally {
+    error.value = getApiErrorMessage(e, "Failed to create server");
     creating.value = false;
   }
 }
 
 onMounted(fetchVersions);
+onUnmounted(() => {
+  setupSocket?.disconnect();
+});
 </script>
 
 <style scoped>
@@ -302,6 +361,10 @@ onMounted(fetchVersions);
   background: var(--color-bg);
   color: var(--color-text);
 }
+.close-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .modal-form {
   display: flex;
   flex-direction: column;
@@ -363,7 +426,61 @@ label {
   font-weight: 600 !important;
   margin-top: 4px;
 }
+.setup-progress {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  padding: 14px;
+}
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.setup-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.setup-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex: 0 0 auto;
+}
+.setup-step.active .step-dot {
+  background: var(--color-warning);
+  animation: pulse 1s infinite alternate;
+}
+.setup-step.success .step-dot {
+  background: var(--color-success);
+}
+.setup-step.failed {
+  color: var(--color-danger);
+}
+.setup-step.failed .step-dot {
+  background: var(--color-danger);
+}
 :deep(.el-input-number .el-input__wrapper) {
   padding-left: 12px;
+}
+@keyframes pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }
 </style>

@@ -29,7 +29,7 @@ const displayText = computed(() => {
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .dot {

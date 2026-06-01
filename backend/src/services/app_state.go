@@ -51,6 +51,7 @@ type AppState struct {
 	processes   map[string]*exec.Cmd
 	stdinPipes  map[string]io.WriteCloser
 	logBrokers  map[string]*utils.LogBroker
+	setupJobs   *SetupJobManager
 	Scheduler   *SchedulerService
 	UserService *UserService
 	DataDir     string
@@ -68,6 +69,7 @@ func NewAppState() *AppState {
 		processes:  make(map[string]*exec.Cmd),
 		stdinPipes: make(map[string]io.WriteCloser),
 		logBrokers: make(map[string]*utils.LogBroker),
+		setupJobs:  NewSetupJobManager(),
 		DataDir:    dataDir,
 		serversCol: utils.GetCollection(utils.DB, "servers"),
 	}
@@ -76,6 +78,10 @@ func NewAppState() *AppState {
 	state.Scheduler = NewSchedulerService(state)
 	state.UserService = NewUserService(dataDir)
 	return state
+}
+
+func (s *AppState) SetupJobs() *SetupJobManager {
+	return s.setupJobs
 }
 
 func (s *AppState) loadServers() {

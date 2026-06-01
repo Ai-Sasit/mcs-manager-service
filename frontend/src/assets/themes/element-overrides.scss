@@ -98,7 +98,7 @@
     color: var(--color-text-secondary) !important;
     font-size: 13px !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.03em !important;
+    letter-spacing: 0 !important;
 }
 
 .el-table::before, .el-table__inner-wrapper::before {

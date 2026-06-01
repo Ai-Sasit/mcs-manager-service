@@ -26,15 +26,45 @@ type CreateServerParams struct {
 	MemoryMB   uint32
 }
 
+type SetupProgressFunc func(SetupEvent)
+
 func CreateServer(state *AppState, params CreateServerParams) (*models.ServerConfig, error) {
+	return createServer(state, params, nil)
+}
+
+func CreateServerWithProgress(state *AppState, params CreateServerParams, progress SetupProgressFunc) (*models.ServerConfig, error) {
+	return createServer(state, params, progress)
+}
+
+func createServer(state *AppState, params CreateServerParams, progress SetupProgressFunc) (*models.ServerConfig, error) {
+	emit := func(step, status, message string, percent int, serverID ...string) {
+		if progress == nil {
+			return
+		}
+		event := SetupEvent{
+			Type:    "setup",
+			Step:    step,
+			Status:  status,
+			Message: message,
+			Percent: percent,
+		}
+		if len(serverID) > 0 {
+			event.ServerID = serverID[0]
+		}
+		progress(event)
+	}
+
+	emit("validate", "active", "Validating server settings", 5)
 	id := uuid.New().String()
 	serverDir := filepath.Join(state.DataDir, "servers", id)
 	logger.Info(fmt.Sprintf("[CreateServer] id=%s name=%s edition=%s version=%s", id, params.Name, params.Edition, params.Version), nil)
 
+	emit("directory", "active", "Creating server directory", 12)
 	if err := os.MkdirAll(serverDir, os.ModePerm); err != nil {
 		logger.Error("[CreateServer] Failed to create dir: "+err.Error(), nil)
 		return nil, fmt.Errorf("failed to create dir: %w", err)
 	}
+	emit("directory", "success", "Server directory ready", 18)
 
 	// Download server files
 	var err error
@@ -43,17 +73,22 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		serverType = "vanilla"
 	}
 	logger.Info(fmt.Sprintf("[CreateServer] Downloading %s server %s type=%s", params.Edition, params.Version, serverType), nil)
+	emit("metadata", "active", "Resolving version metadata", 28)
 	switch params.Edition {
 	case models.EditionJava:
 		switch serverType {
 		case "paper":
+			emit("download", "active", "Downloading Paper server jar", 42)
 			err = DownloadPaperServer(params.Version, serverDir)
 		case "spigot":
+			emit("download", "active", "Downloading Spigot-compatible server jar", 42)
 			err = DownloadSpigotServer(params.Version, serverDir)
 		default:
+			emit("download", "active", "Downloading vanilla Java server jar", 42)
 			err = DownloadJavaServer(params.Version, serverDir)
 		}
 	case models.EditionBedrock:
+		emit("download", "active", "Downloading Bedrock dedicated server archive", 42)
 		err = DownloadBedrockServer(params.Version, serverDir)
 	}
 	if err != nil {
@@ -62,8 +97,10 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		return nil, fmt.Errorf("download failed: %w", err)
 	}
 	logger.Info("[CreateServer] Download complete id="+id, nil)
+	emit("download", "success", "Server artifact installed", 68)
 
 	// Accept EULA for Java
+	emit("configure", "active", "Writing server configuration", 78)
 	if params.Edition == models.EditionJava {
 		os.WriteFile(filepath.Join(serverDir, "eula.txt"), []byte("eula=true\n"), 0644)
 	}
@@ -106,6 +143,7 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 	}
 
 	// Create plugins/addons dir
+	emit("files", "active", "Preparing plugin directories", 88)
 	subDir := "plugins"
 	if params.Edition == models.EditionBedrock {
 		subDir = "addons"
@@ -126,8 +164,10 @@ func CreateServer(state *AppState, params CreateServerParams) (*models.ServerCon
 		ServerDir:  serverDir,
 	}
 
+	emit("register", "active", "Registering server", 94)
 	state.AddServer(config)
 	logger.Info("[CreateServer] Registered id="+config.ID+" name="+config.Name, nil)
+	emit("complete", "success", "Server setup complete", 100, config.ID)
 	return config, nil
 }
 

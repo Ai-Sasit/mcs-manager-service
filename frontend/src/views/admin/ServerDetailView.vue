@@ -300,6 +300,7 @@ import { useServerLogs } from "@/composables/useServerLogs";
 import { useServerTerminal } from "@/composables/useServerTerminal";
 import PluginUpload from "@/components/servers/PluginUpload.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const route = useRoute();
 const router = useRouter();
@@ -339,8 +340,9 @@ async function loadServer() {
       `/servers/${encodeURIComponent(route.params.id)}`,
     );
     server.value = data.data;
-  } catch {
+  } catch (e) {
     server.value = null;
+    ElMessage.error("Failed to load server: " + getApiErrorMessage(e));
   } finally {
     loadingServer.value = false;
   }
@@ -353,8 +355,9 @@ async function loadPlugins() {
       `/servers/${encodeURIComponent(server.value.id)}/plugins`,
     );
     plugins.value = data.data || [];
-  } catch {
+  } catch (e) {
     plugins.value = [];
+    ElMessage.error("Failed to load plugins: " + getApiErrorMessage(e));
   }
 }
 
@@ -371,7 +374,7 @@ async function loadConfig() {
       value,
     }));
   } catch (e) {
-    configError.value = e.response?.data?.message || "Failed to load config";
+    configError.value = getApiErrorMessage(e, "Failed to load config");
   } finally {
     configLoading.value = false;
   }
@@ -389,7 +392,7 @@ async function saveConfig() {
     );
     ElMessage.success("Configuration updated.");
   } catch (e) {
-    ElMessage.error(e.response?.data?.message || "Failed to save config");
+    ElMessage.error(getApiErrorMessage(e, "Failed to save config"));
   } finally {
     configSaving.value = false;
   }
@@ -441,7 +444,7 @@ async function start() {
     server.value.status = "running";
     ElMessage.success("Server start sequence initiated.");
   } catch (e) {
-    ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -458,7 +461,7 @@ async function stop() {
     termComp?.disconnect();
     ElMessage.info("Server stopped.");
   } catch (e) {
-    ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -478,7 +481,7 @@ async function restart() {
     setupTerminal();
     ElMessage.success("Server restarted.");
   } catch (e) {
-    ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -505,7 +508,7 @@ async function kill() {
     ElMessage.success("Process terminated.");
   } catch (e) {
     if (e !== "cancel")
-      ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+      ElMessage.error("Failed: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -529,7 +532,7 @@ async function confirmDelete() {
     router.push("/");
   } catch (e) {
     if (e !== "cancel") {
-      ElMessage.error("Failed: " + (e.response?.data?.message || e.message));
+      ElMessage.error("Failed: " + getApiErrorMessage(e));
       loading.value = false;
     }
   }
@@ -548,7 +551,7 @@ async function removePlugin(name) {
     ElMessage.success("Plugin removed successfully.");
     loadPlugins();
   } catch (e) {
-    if (e !== "cancel") ElMessage.error(e.response?.data?.message || e.message);
+    if (e !== "cancel") ElMessage.error(getApiErrorMessage(e));
   }
 }
 

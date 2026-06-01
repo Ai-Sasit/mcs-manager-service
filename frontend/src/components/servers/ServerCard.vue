@@ -113,7 +113,7 @@ function getStatusType(status) {
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .live-indicator {
@@ -149,7 +149,7 @@ function getStatusType(status) {
 .status-tag {
   font-weight: 700 !important;
   font-size: 10px !important;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   padding: 0 8px !important;
   height: 20px !important;
   line-height: 20px !important;

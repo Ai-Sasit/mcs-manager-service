@@ -35,6 +35,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	// WebSocket routes (plain Fiber v3 handlers, upgrade handled inside)
 	app.Get("/ws/servers/:id/logs", controllers.WsLogs)
 	app.Get("/ws/servers/:id/terminal", controllers.WsTerminal)
+	app.Get("/ws/server-setup/:job_id", controllers.WsServerSetup)
 	app.Get("/ws/backend-logs", controllers.WsBackendLogs)
 
 	// Protected API routes
@@ -46,6 +47,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 
 	// Server CRUD
 	api.Get("/servers", controllers.ListServers)
+	api.Post("/servers/setup-jobs", controllers.CreateServerSetupJob)
 	api.Post("/servers", controllers.CreateServer)
 	api.Get("/servers/:id", controllers.GetServer)
 	api.Delete("/servers/:id", controllers.DeleteServer)

@@ -34,6 +34,10 @@ class ApiService {
     return this.https.post("/servers", payload);
   }
 
+  async createServerSetupJob(payload) {
+    return this.https.post("/servers/setup-jobs", payload);
+  }
+
   async getServer(id) {
     return this.https.get(`/servers/${encodeURIComponent(id)}`);
   }

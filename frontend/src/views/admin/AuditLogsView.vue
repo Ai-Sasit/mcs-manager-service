@@ -63,6 +63,7 @@ import { ref, computed, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { Refresh, Search } from "@element-plus/icons-vue";
 import apiClient from "@/api/client";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const logs = ref([]);
 const loading = ref(false);
@@ -86,9 +87,7 @@ async function fetchLogs() {
     const res = await apiClient.get("/audit-logs");
     logs.value = res.data.data || [];
   } catch (e) {
-    ElMessage.error(
-      "Failed to load audit logs: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to load audit logs: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }

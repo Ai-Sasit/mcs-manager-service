@@ -45,6 +45,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import apiClient from "@/api/client";
+import { ElMessage } from "element-plus";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const info = ref({});
 
@@ -52,8 +54,9 @@ async function fetchInfo() {
   try {
     const { data } = await apiClient.get("/system/info");
     info.value = data.data || {};
-  } catch {
+  } catch (e) {
     info.value = {};
+    ElMessage.error("Failed to load system info: " + getApiErrorMessage(e));
   }
 }
 
@@ -80,7 +83,7 @@ onMounted(fetchInfo);
   font-weight: 500;
   color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 .stat-value {
   font-size: 24px;

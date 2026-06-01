@@ -3,8 +3,10 @@ package controllers
 import (
 	"fmt"
 	"mc-manage-backend/src/interfaces"
+	"mc-manage-backend/src/models"
 	"mc-manage-backend/src/services"
 	"mc-manage-backend/src/utils"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -33,9 +35,66 @@ func CreateServer(c fiber.Ctx) error {
 		logger.Warn("[CreateServer] Missing required fields", nil)
 		return utils.ErrorResponse(c, "name, edition, and version are required", fiber.StatusBadRequest)
 	}
+	if !isValidServerEdition(req.Edition) {
+		return utils.ErrorResponse(c, "edition must be java or bedrock", fiber.StatusBadRequest)
+	}
 
 	logger.Info(fmt.Sprintf("[CreateServer] name=%s edition=%s version=%s", req.Name, req.Edition, req.Version), nil)
 
+	params := createServerParamsFromRequest(req)
+
+	config, err := services.CreateServer(state, params)
+	if err != nil {
+		logger.Error("[CreateServer] Failed: "+err.Error(), nil)
+		return utils.ErrorResponse(c, err.Error(), fiber.StatusInternalServerError)
+	}
+
+	logger.Info("[CreateServer] Done id="+config.ID, nil)
+	utils.LogAudit("admin", "CREATE_SERVER", req.Name, "Created new server instance.")
+	return utils.SuccessResponse(c, "Server created", config, fiber.StatusCreated)
+}
+
+func CreateServerSetupJob(c fiber.Ctx) error {
+	var req interfaces.CreateServerRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		logger.Warn("[CreateServerSetupJob] Invalid request body: "+err.Error(), nil)
+		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
+	}
+
+	if req.Name == "" || req.Edition == "" || req.Version == "" {
+		logger.Warn("[CreateServerSetupJob] Missing required fields", nil)
+		return utils.ErrorResponse(c, "name, edition, and version are required", fiber.StatusBadRequest)
+	}
+	if !isValidServerEdition(req.Edition) {
+		return utils.ErrorResponse(c, "edition must be java or bedrock", fiber.StatusBadRequest)
+	}
+
+	params := createServerParamsFromRequest(req)
+	job := state.SetupJobs().Create()
+	logger.Info(fmt.Sprintf("[CreateServerSetupJob] job=%s name=%s edition=%s version=%s", job.ID, req.Name, req.Edition, req.Version), nil)
+
+	go func() {
+		config, err := services.CreateServerWithProgress(state, params, job.Publish)
+		if err != nil {
+			job.Publish(services.SetupEvent{
+				Type:    "setup",
+				Step:    "failed",
+				Status:  "failed",
+				Message: err.Error(),
+				Percent: 100,
+			})
+			state.SetupJobs().DeleteAfter(job.ID, 15*time.Minute)
+			return
+		}
+		utils.LogAudit("admin", "CREATE_SERVER", req.Name, "Created new server instance.")
+		logger.Info("[CreateServerSetupJob] Done job="+job.ID+" id="+config.ID, nil)
+		state.SetupJobs().DeleteAfter(job.ID, 15*time.Minute)
+	}()
+
+	return utils.SuccessResponse(c, "Server setup started", fiber.Map{"job_id": job.ID}, fiber.StatusCreated)
+}
+
+func createServerParamsFromRequest(req interfaces.CreateServerRequest) services.CreateServerParams {
 	params := services.CreateServerParams{
 		Name:       req.Name,
 		Edition:    req.Edition,
@@ -51,16 +110,11 @@ func CreateServer(c fiber.Ctx) error {
 	if req.MemoryMB != nil {
 		params.MemoryMB = *req.MemoryMB
 	}
+	return params
+}
 
-	config, err := services.CreateServer(state, params)
-	if err != nil {
-		logger.Error("[CreateServer] Failed: "+err.Error(), nil)
-		return utils.ErrorResponse(c, err.Error(), fiber.StatusInternalServerError)
-	}
-
-	logger.Info("[CreateServer] Done id="+config.ID, nil)
-	utils.LogAudit("admin", "CREATE_SERVER", req.Name, "Created new server instance.")
-	return utils.SuccessResponse(c, "Server created", config, fiber.StatusCreated)
+func isValidServerEdition(edition models.ServerEdition) bool {
+	return edition == models.EditionJava || edition == models.EditionBedrock
 }
 
 // GetServer returns a single server by ID

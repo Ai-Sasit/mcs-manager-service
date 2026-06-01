@@ -263,7 +263,7 @@ function handleLogout() {
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .sidebar-nav {
@@ -287,7 +287,7 @@ function handleLogout() {
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .nav-item {

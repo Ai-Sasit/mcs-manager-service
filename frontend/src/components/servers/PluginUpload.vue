@@ -38,6 +38,7 @@
 import { ref } from "vue";
 import { Upload, Loading } from "@element-plus/icons-vue";
 import apiClient from "@/api/client";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const props = defineProps({
   serverId: String,
@@ -69,7 +70,7 @@ async function uploadFile(file) {
     messageType.value = "success";
     emit("uploaded");
   } catch (e) {
-    message.value = `Failed: ${e.response?.data?.message || e.message}`;
+    message.value = `Failed: ${getApiErrorMessage(e)}`;
     messageType.value = "error";
   } finally {
     uploading.value = false;

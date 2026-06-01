@@ -124,6 +124,7 @@ import { Plus, Refresh } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const selectedServerId = ref("");
@@ -144,9 +145,7 @@ async function fetchPlayers() {
     );
     players.value = data.data || [];
   } catch (e) {
-    ElMessage.error(
-      "Failed to fetch players: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to fetch players: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -167,7 +166,7 @@ async function updateRole(name, action) {
     // Since commands are background, wait a bit before refresh or just assume success
     setTimeout(fetchPlayers, 1000);
   } catch (e) {
-    ElMessage.error(e.message || "Failed to update player");
+    ElMessage.error(getApiErrorMessage(e, "Failed to update player"));
   } finally {
     loading.value = false;
   }

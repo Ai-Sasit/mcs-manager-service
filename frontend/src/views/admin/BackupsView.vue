@@ -109,6 +109,7 @@ import { Plus, Refresh } from "@element-plus/icons-vue";
 import { ElMessage, ElNotification } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const selectedServerId = ref("");
@@ -127,9 +128,7 @@ async function fetchBackups() {
     );
     backups.value = data.data || [];
   } catch (e) {
-    ElMessage.error(
-      "Failed to fetch backups: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to fetch backups: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -148,9 +147,7 @@ async function createBackup() {
     });
     setTimeout(fetchBackups, 3000);
   } catch (e) {
-    ElMessage.error(
-      "Failed to start backup: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to start backup: " + getApiErrorMessage(e));
   } finally {
     creating.value = false;
   }
@@ -165,9 +162,7 @@ async function deleteBackup(name) {
     ElMessage.success("Backup deleted");
     fetchBackups();
   } catch (e) {
-    ElMessage.error(
-      "Failed to delete backup: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to delete backup: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }

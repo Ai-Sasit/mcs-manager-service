@@ -118,6 +118,7 @@ import { Plus, Refresh, Delete } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const schedules = ref([]);
@@ -140,7 +141,7 @@ async function fetchSchedules() {
     const { data } = await apiClient.get("/schedules");
     schedules.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to load schedules");
+    ElMessage.error("Failed to load schedules: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -157,7 +158,7 @@ async function handleCreate() {
     showCreateDialog.value = false;
     fetchSchedules();
   } catch (e) {
-    ElMessage.error("Failed to create schedule");
+    ElMessage.error("Failed to create schedule: " + getApiErrorMessage(e));
   } finally {
     actionLoading.value = false;
   }
@@ -169,7 +170,7 @@ async function handleToggle(id, enabled) {
       enabled,
     });
   } catch (e) {
-    ElMessage.error("Failed to update schedule status");
+    ElMessage.error("Failed to update schedule status: " + getApiErrorMessage(e));
     fetchSchedules();
   }
 }
@@ -180,7 +181,7 @@ async function handleDelete(id) {
     ElMessage.success("Schedule removed");
     fetchSchedules();
   } catch (e) {
-    ElMessage.error("Failed to delete schedule");
+    ElMessage.error("Failed to delete schedule: " + getApiErrorMessage(e));
   }
 }
 

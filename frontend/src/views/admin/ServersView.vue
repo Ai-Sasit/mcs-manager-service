@@ -97,6 +97,7 @@ import { ElMessage } from "element-plus";
 import { Plus, Refresh } from "@element-plus/icons-vue";
 import { useServersStore } from "@/stores/servers";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const showCreate = ref(false);
@@ -117,7 +118,7 @@ async function handleStart(id) {
     await store.startServer(id);
     ElMessage.success("Server started");
   } catch (e) {
-    ElMessage.error("Failed to start: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed to start: " + getApiErrorMessage(e));
   } finally {
     actionLoading[id] = "";
   }
@@ -129,7 +130,7 @@ async function handleStop(id) {
     await store.stopServer(id);
     ElMessage.success("Server stopped");
   } catch (e) {
-    ElMessage.error("Failed to stop: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed to stop: " + getApiErrorMessage(e));
   } finally {
     actionLoading[id] = "";
   }
@@ -141,7 +142,7 @@ async function handleDelete(id) {
     await store.deleteServer(id);
     ElMessage.success("Server deleted");
   } catch (e) {
-    ElMessage.error("Failed to delete: " + (e.response?.data?.message || e.message));
+    ElMessage.error("Failed to delete: " + getApiErrorMessage(e));
   } finally {
     actionLoading[id] = "";
   }

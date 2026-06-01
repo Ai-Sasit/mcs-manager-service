@@ -95,6 +95,7 @@ import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { getToken } from "@/utils/authStorage";
 import { WS_BASE_URL } from "@/constants";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const files = ref([]);
 const selectedFile = ref("");
@@ -130,8 +131,8 @@ async function loadFiles() {
       selectedFile.value = files.value[0];
       await loadLines();
     }
-  } catch {
-    ElMessage.error("Failed to load log file list");
+  } catch (e) {
+    ElMessage.error("Failed to load log file list: " + getApiErrorMessage(e));
   }
 }
 
@@ -144,8 +145,8 @@ async function loadLines() {
     );
     lines.value = data.data || [];
     scrollToBottom();
-  } catch {
-    ElMessage.error("Failed to load log file");
+  } catch (e) {
+    ElMessage.error("Failed to load log file: " + getApiErrorMessage(e));
     lines.value = [];
   } finally {
     loading.value = false;

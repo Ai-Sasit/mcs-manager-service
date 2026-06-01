@@ -114,6 +114,7 @@ import {
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const selectedServerId = ref("");
@@ -136,9 +137,7 @@ async function fetchFiles() {
     );
     files.value = data.data || [];
   } catch (e) {
-    ElMessage.error(
-      "Failed to list files: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to list files: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
@@ -162,9 +161,7 @@ async function loadFile(path) {
     );
     fileContent.value = data.data;
   } catch (e) {
-    ElMessage.error(
-      "Failed to load file: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to load file: " + getApiErrorMessage(e));
   } finally {
     editorLoading.value = false;
   }
@@ -179,9 +176,7 @@ async function saveFile() {
     );
     ElMessage.success("File saved successfully");
   } catch (e) {
-    ElMessage.error(
-      "Failed to save file: " + (e.response?.data?.message || e.message),
-    );
+    ElMessage.error("Failed to save file: " + getApiErrorMessage(e));
   } finally {
     saving.value = false;
   }
