@@ -52,11 +52,11 @@
       <span class="stat">{{ selectedFile }}</span>
       <el-tag
         v-if="isLive"
-        type="danger"
+        :type="liveState === 'open' ? 'danger' : 'warning'"
         size="small"
         effect="dark"
         class="live-tag"
-        >LIVE</el-tag
+        >{{ liveState === "open" ? "LIVE" : liveState.toUpperCase() }}</el-tag
       >
     </div>
     <div class="log-card card">
@@ -93,9 +93,8 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Refresh, Delete } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
-import { getToken } from "@/utils/authStorage";
-import { WS_BASE_URL } from "@/constants";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { useBackendLogs } from "@/composables/useBackendLogs";
 
 const files = ref([]);
 const selectedFile = ref("");
@@ -105,7 +104,8 @@ const lines = ref([]);
 const loading = ref(false);
 const autoScroll = ref(true);
 const isLive = ref(false);
-const socket = ref(null);
+const liveState = ref("idle");
+let liveSocket = null;
 const logBox = ref(null);
 const lineOffset = computed(() => 0);
 
@@ -170,35 +170,31 @@ function toggleLive() {
 }
 
 function connectLive() {
-  const token = getToken();
-  if (!token) {
-    isLive.value = false;
-    return;
-  }
-  const url = `${WS_BASE_URL}/ws/backend-logs?token=${token}`;
-  socket.value = new WebSocket(url);
-  socket.value.onopen = () => {
-    ElMessage.success("Connected to live logs");
-  };
-  socket.value.onmessage = (event) => {
-    lines.value.push(event.data);
+  disconnectLive();
+  liveSocket = useBackendLogs();
+  liveState.value = liveSocket.state.value;
+  liveSocket.onStateChange((state) => {
+    liveState.value = state;
+  });
+  liveSocket.onLine((line) => {
+    lines.value.push(line);
     if (lines.value.length > tailCount.value) lines.value.shift();
     scrollToBottom();
-  };
-  socket.value.onclose = () => {
-    isLive.value = false;
-    socket.value = null;
-  };
-  socket.value.onerror = () => {
-    isLive.value = false;
-  };
+  });
+  liveSocket.onError((message) => {
+    liveState.value = liveSocket.state.value;
+    ElMessage.warning(message);
+  });
+  liveSocket.connect();
+  liveState.value = liveSocket.state.value;
 }
 
 function disconnectLive() {
-  if (socket.value) {
-    socket.value.close();
-    socket.value = null;
+  if (liveSocket) {
+    liveSocket.disconnect();
+    liveSocket = null;
   }
+  liveState.value = "closed";
 }
 
 function clearView() {

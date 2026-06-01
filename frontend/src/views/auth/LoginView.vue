@@ -1,25 +1,6 @@
 <template>
   <div class="login-page">
     <section class="hero-panel" aria-label="MC Manage overview">
-      <div class="hero-art">
-        <div class="sun"></div>
-        <div class="cloud cloud-one"></div>
-        <div class="cloud cloud-two"></div>
-        <div class="mountain mountain-back"></div>
-        <div class="mountain mountain-front"></div>
-        <div class="terrain">
-          <div class="server-rack">
-            <div class="rack-light active"></div>
-            <div class="rack-light"></div>
-            <div class="rack-line"></div>
-            <div class="rack-line short"></div>
-          </div>
-          <div class="console-window">
-            <span>$ java -jar server.jar</span>
-            <span class="ok">world ready</span>
-          </div>
-        </div>
-      </div>
       <div class="hero-copy">
         <div class="brand-row">
           <div class="brand-mark">
@@ -151,131 +132,18 @@ async function handleLogin() {
   flex-direction: column;
   justify-content: space-between;
   padding: 48px;
-  background: linear-gradient(180deg, #dff7ff 0%, #e9fbf2 56%, #9ad17b 56%, #6aa84f 100%);
+  background:
+    linear-gradient(90deg, rgba(5, 16, 24, 0.76), rgba(5, 16, 24, 0.38) 54%, rgba(5, 16, 24, 0.68)),
+    url("/login-bg.webp") center / cover no-repeat,
+    #0f172a;
 }
 
-.hero-art {
+.hero-panel::after {
+  content: "";
   position: absolute;
   inset: 0;
-}
-
-.sun {
-  position: absolute;
-  top: 58px;
-  right: 80px;
-  width: 86px;
-  height: 86px;
-  background: #ffd166;
-  box-shadow: inset -10px -10px 0 rgba(219, 136, 22, 0.18);
-}
-
-.cloud {
-  position: absolute;
-  background: #ffffff;
-  box-shadow: 32px 0 0 #ffffff, 64px 0 0 #ffffff, 32px -24px 0 #ffffff;
-  height: 28px;
-  width: 34px;
-  opacity: 0.92;
-}
-
-.cloud-one {
-  top: 112px;
-  left: 18%;
-}
-
-.cloud-two {
-  top: 190px;
-  right: 22%;
-  transform: scale(0.72);
-}
-
-.mountain {
-  position: absolute;
-  bottom: 36%;
-  width: 34vw;
-  height: 22vw;
-  background: #6b7280;
-  transform: rotate(45deg);
-}
-
-.mountain-back {
-  left: 4%;
-  opacity: 0.42;
-}
-
-.mountain-front {
-  right: 10%;
-  background: #52616b;
-  opacity: 0.62;
-}
-
-.terrain {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 44%;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px) 0 0 / 42px 42px,
-    linear-gradient(#6aa84f 0 26%, #8b5a2b 26% 100%);
-  border-top: 10px solid #4f8f3b;
-}
-
-.server-rack,
-.console-window {
-  position: absolute;
-  border: 3px solid rgba(31, 41, 55, 0.88);
-  box-shadow: 10px 10px 0 rgba(31, 41, 55, 0.16);
-}
-
-.server-rack {
-  left: 16%;
-  bottom: 33%;
-  width: 120px;
-  height: 150px;
-  background: #263238;
-  padding: 18px;
-}
-
-.rack-light {
-  width: 14px;
-  height: 14px;
-  background: #64748b;
-  margin-bottom: 16px;
-}
-
-.rack-light.active {
-  background: #22c55e;
-  box-shadow: 0 0 18px rgba(34, 197, 94, 0.65);
-}
-
-.rack-line {
-  width: 68px;
-  height: 8px;
-  background: #94a3b8;
-  margin-bottom: 14px;
-}
-
-.rack-line.short {
-  width: 44px;
-}
-
-.console-window {
-  right: 13%;
-  bottom: 42%;
-  width: min(320px, 36vw);
-  min-height: 128px;
-  background: #111827;
-  color: #d1fae5;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 22px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-}
-
-.console-window .ok {
-  color: #6ee7b7;
+  background: linear-gradient(180deg, transparent 45%, rgba(5, 16, 24, 0.58));
+  pointer-events: none;
 }
 
 .hero-copy {
@@ -283,7 +151,7 @@ async function handleLogin() {
   z-index: 1;
   max-width: 560px;
   margin-top: auto;
-  color: #17301f;
+  color: #ffffff;
 }
 
 .brand-row {
@@ -305,14 +173,15 @@ async function handleLogin() {
 .brand-mark {
   width: 42px;
   height: 42px;
-  background: #111827;
+  background: rgba(17, 24, 39, 0.82);
   color: #ffffff;
-  border: 3px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(8px);
 }
 
 .hero-copy h1 {
   max-width: 620px;
-  color: #17301f;
+  color: #ffffff;
   font-size: 60px;
   line-height: 1;
   font-weight: 900;
@@ -321,7 +190,7 @@ async function handleLogin() {
 
 .hero-copy p {
   max-width: 520px;
-  color: rgba(23, 48, 31, 0.78);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 17px;
   line-height: 1.7;
 }
@@ -416,20 +285,6 @@ async function handleLogin() {
 @media (max-width: 560px) {
   .hero-panel {
     min-height: 360px;
-  }
-
-  .console-window {
-    right: 24px;
-    width: calc(100% - 150px);
-    min-height: 104px;
-    padding: 16px;
-    font-size: 11px;
-  }
-
-  .server-rack {
-    left: 24px;
-    width: 92px;
-    height: 122px;
   }
 
   .hero-copy p {

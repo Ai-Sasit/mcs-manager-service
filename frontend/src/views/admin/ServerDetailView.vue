@@ -121,7 +121,12 @@
               <el-button size="small" :icon="Remove" @click="clearLogs"
                 >Clear Logs</el-button
               >
-              <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
+              <div class="stream-tools">
+                <el-tag size="small" :type="logConnectionState === 'open' ? 'success' : 'warning'">
+                  {{ logConnectionState }}
+                </el-tag>
+                <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
+              </div>
             </div>
             <div class="log-box" ref="logBox">
               <div
@@ -144,6 +149,11 @@
 
         <el-tab-pane label="Terminal" name="terminal">
           <div class="tab-content">
+            <div class="tab-toolbar">
+              <el-tag size="small" :type="terminalConnectionState === 'open' ? 'success' : 'warning'">
+                {{ terminalConnectionState }}
+              </el-tag>
+            </div>
             <div class="log-box" ref="termBox">
               <div
                 v-for="(line, i) in termLines"
@@ -164,7 +174,7 @@
               <el-input
                 v-model="cmdInput"
                 placeholder="Enter server command..."
-                :disabled="server.status !== 'running'"
+                :disabled="server.status !== 'running' || terminalConnectionState !== 'open'"
                 @keyup.enter="sendCommand"
                 ><template #prepend
                   ><span class="cmd-prompt">/</span></template
@@ -172,7 +182,7 @@
               >
               <el-button
                 type="primary"
-                :disabled="server.status !== 'running'"
+                :disabled="server.status !== 'running' || terminalConnectionState !== 'open'"
                 @click="sendCommand"
                 >Execute</el-button
               >
@@ -314,11 +324,13 @@ const activeTab = ref("overview");
 const logLines = ref([]);
 const autoScroll = ref(true);
 const logBox = ref(null);
+const logConnectionState = ref("idle");
 let logsComp = null;
 
 const termLines = ref([]);
 const cmdInput = ref("");
 const termBox = ref(null);
+const terminalConnectionState = ref("idle");
 let termComp = null;
 
 const configRows = ref([]);
@@ -407,23 +419,31 @@ function scrollToBottom(el) {
 function setupLogs() {
   if (logsComp) logsComp.disconnect();
   logsComp = useServerLogs(server.value.id);
+  logsComp.onStateChange((state) => {
+    logConnectionState.value = state;
+  });
   logsComp.onLine((line) => {
     logLines.value.push(line);
     if (logLines.value.length > 2000) logLines.value.shift();
     if (autoScroll.value) scrollToBottom(logBox.value);
   });
   logsComp.connect();
+  logConnectionState.value = logsComp.state.value;
 }
 
 function setupTerminal() {
   if (termComp) termComp.disconnect();
   termComp = useServerTerminal(server.value.id);
+  termComp.onStateChange((state) => {
+    terminalConnectionState.value = state;
+  });
   termComp.onLine((line) => {
     termLines.value.push(line);
     if (termLines.value.length > 2000) termLines.value.shift();
     scrollToBottom(termBox.value);
   });
   termComp.connect();
+  terminalConnectionState.value = termComp.state.value;
 }
 
 function clearLogs() {
@@ -431,7 +451,10 @@ function clearLogs() {
 }
 function sendCommand() {
   if (!cmdInput.value.trim() || !termComp) return;
-  termComp.sendCommand(cmdInput.value.trim());
+  if (!termComp.sendCommand(cmdInput.value.trim())) {
+    ElMessage.warning("Terminal is not connected.");
+    return;
+  }
   cmdInput.value = "";
 }
 
@@ -664,6 +687,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+.stream-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .log-box {
   background: var(--color-white);

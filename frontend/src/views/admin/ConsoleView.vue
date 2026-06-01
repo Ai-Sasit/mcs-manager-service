@@ -32,6 +32,9 @@
       <div class="terminal-container">
         <div class="terminal-header">
           <span>Terminal: {{ selectedServerName }}</span>
+          <el-tag size="small" :type="terminalConnectionState === 'open' ? 'success' : 'warning'">
+            {{ terminalConnectionState }}
+          </el-tag>
           <el-button size="small" type="danger" plain @click="disconnectTerminal">Disconnect</el-button>
         </div>
         <div class="log-box" ref="termBox">
@@ -51,6 +54,7 @@
           <el-button 
             type="primary" 
             @click="sendCommand"
+            :disabled="terminalConnectionState !== 'open'"
           >
             Execute
           </el-button>
@@ -72,6 +76,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { Refresh, Cpu } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import { useServersStore } from "@/stores/servers";
 import { useServerTerminal } from "@/composables/useServerTerminal";
 
@@ -90,6 +95,7 @@ const selectedServerName = computed(() => {
 const termLines = ref([]);
 const cmdInput = ref("");
 const termBox = ref(null);
+const terminalConnectionState = ref("idle");
 let termComp = null;
 
 onMounted(() => {
@@ -113,12 +119,16 @@ function onServerChange() {
   if (!selectedServerId.value) return;
 
   termComp = useServerTerminal(selectedServerId.value);
+  termComp.onStateChange((state) => {
+    terminalConnectionState.value = state;
+  });
   termComp.onLine((line) => {
     termLines.value.push(line);
     if (termLines.value.length > 3000) termLines.value.shift();
     scrollToBottom(termBox.value);
   });
   termComp.connect();
+  terminalConnectionState.value = termComp.state.value;
 }
 
 function disconnectTerminal() {
@@ -126,11 +136,15 @@ function disconnectTerminal() {
     termComp.disconnect();
     termComp = null;
   }
+  terminalConnectionState.value = "closed";
 }
 
 function sendCommand() {
   if (!cmdInput.value.trim() || !termComp) return;
-  termComp.sendCommand(cmdInput.value.trim());
+  if (!termComp.sendCommand(cmdInput.value.trim())) {
+    ElMessage.warning("Terminal is not connected.");
+    return;
+  }
   cmdInput.value = "";
 }
 </script>
@@ -192,6 +206,7 @@ function sendCommand() {
 
 .terminal-header {
   display: flex;
+  gap: 12px;
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;

@@ -153,6 +153,13 @@
                 <strong>{{ setupPercent }}%</strong>
               </div>
               <el-progress :percentage="setupPercent" :stroke-width="8" />
+              <div
+                v-if="setupConnectionState !== 'open'"
+                class="connection-note"
+                :class="setupConnectionState"
+              >
+                Progress stream: {{ setupConnectionState }}
+              </div>
               <div class="setup-steps">
                 <div
                   v-for="event in setupEvents"
@@ -213,6 +220,7 @@ const creating = ref(false);
 const error = ref(null);
 const setupEvents = ref([]);
 const setupPercent = ref(0);
+const setupConnectionState = ref("idle");
 let setupSocket = null;
 
 async function fetchVersions() {
@@ -264,6 +272,9 @@ async function handleCreate() {
     }
 
     setupSocket = useServerSetupProgress(data.data.job_id);
+    setupSocket.onStateChange((state) => {
+      setupConnectionState.value = state;
+    });
     setupSocket.onEvent((event) => {
       setupPercent.value = Math.max(setupPercent.value, event.percent || 0);
       setupEvents.value.push(event);
@@ -286,6 +297,7 @@ async function handleCreate() {
       creating.value = false;
     });
     setupSocket.connect();
+    setupConnectionState.value = setupSocket.state.value;
   } catch (e) {
     error.value = getApiErrorMessage(e, "Failed to create server");
     creating.value = false;
@@ -448,6 +460,18 @@ label {
   margin-top: 12px;
   max-height: 150px;
   overflow-y: auto;
+}
+.connection-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.connection-note.reconnecting,
+.connection-note.connecting {
+  color: var(--color-warning);
+}
+.connection-note.error {
+  color: var(--color-danger);
 }
 .setup-step {
   display: flex;

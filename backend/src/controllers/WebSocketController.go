@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"encoding/json"
 	"mc-manage-backend/src/utils"
+	"strconv"
 	"strings"
 
 	ws "github.com/fasthttp/websocket"
@@ -15,6 +17,11 @@ var upgrader = ws.FastHTTPUpgrader{
 	},
 }
 
+type terminalCommandMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
 // WsLogs streams server stdout/stderr to a WebSocket client
 func WsLogs(c fiber.Ctx) error {
 	id := c.Params("id")
@@ -22,19 +29,20 @@ func WsLogs(c fiber.Ctx) error {
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
 		defer conn.Close()
+		client := newWSClient(conn)
 
 		broker := state.GetLogBroker(id)
 		ch := broker.Subscribe()
 		defer func() {
+			client.close()
 			broker.Unsubscribe(ch)
 			logger.Info("[WsLogs] Client disconnected server="+id, nil)
 		}()
 
-		done := make(chan struct{})
 		go func() {
-			defer close(done)
 			for {
 				if _, _, err := conn.ReadMessage(); err != nil {
+					client.close()
 					return
 				}
 			}
@@ -44,12 +52,13 @@ func WsLogs(c fiber.Ctx) error {
 			select {
 			case line, ok := <-ch:
 				if !ok {
+					client.close()
 					return
 				}
-				if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+				if !client.sendEnvelope("log", line) {
 					return
 				}
-			case <-done:
+			case <-client.done:
 				return
 			}
 		}
@@ -70,50 +79,48 @@ func WsTerminal(c fiber.Ctx) error {
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
 		defer conn.Close()
+		client := newWSClient(conn)
 
 		broker := state.GetLogBroker(id)
 		ch := broker.Subscribe()
 		defer func() {
+			client.close()
 			broker.Unsubscribe(ch)
 			logger.Info("[WsTerminal] Client disconnected server="+id, nil)
 		}()
 
-		// Stream logs to client
-		done := make(chan struct{})
 		go func() {
-			defer close(done)
 			for {
 				select {
 				case line, ok := <-ch:
 					if !ok {
+						client.close()
 						return
 					}
-					if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+					if !client.sendEnvelope("terminal_output", line) {
 						return
 					}
-				case <-done:
+				case <-client.done:
 					return
 				}
 			}
 		}()
 
-		// Read commands from client
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
-			cmd := strings.TrimSpace(string(msg))
+			cmd := parseTerminalCommand(msg)
 			if cmd != "" {
 				if err := state.SendCommand(id, cmd); err != nil {
-					conn.WriteMessage(ws.TextMessage, []byte("[ERROR] "+err.Error()))
+					client.sendEnvelope("terminal_output", "[ERROR] "+err.Error())
 				}
 			}
 		}
 
-		// Signal done and wait for log streaming goroutine to finish
-		close(done)
-		<-done
+		client.close()
+		client.wait()
 	})
 
 	if err != nil {
@@ -123,24 +130,33 @@ func WsTerminal(c fiber.Ctx) error {
 	return nil
 }
 
+func parseTerminalCommand(msg []byte) string {
+	var payload terminalCommandMessage
+	if err := json.Unmarshal(msg, &payload); err == nil && payload.Type == "command" {
+		return strings.TrimSpace(payload.Data)
+	}
+	return strings.TrimSpace(string(msg))
+}
+
 // WsBackendLogs streams internal backend logs to a WebSocket client
 func WsBackendLogs(c fiber.Ctx) error {
 	logger.Info("[WsBackendLogs] Client connected", nil)
 
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
 		defer conn.Close()
+		client := newWSClient(conn)
 
 		ch := utils.BackendLogBroker.Subscribe()
 		defer func() {
+			client.close()
 			utils.BackendLogBroker.Unsubscribe(ch)
 			logger.Info("[WsBackendLogs] Client disconnected", nil)
 		}()
 
-		done := make(chan struct{})
 		go func() {
-			defer close(done)
 			for {
 				if _, _, err := conn.ReadMessage(); err != nil {
+					client.close()
 					return
 				}
 			}
@@ -150,12 +166,13 @@ func WsBackendLogs(c fiber.Ctx) error {
 			select {
 			case line, ok := <-ch:
 				if !ok {
+					client.close()
 					return
 				}
-				if err := conn.WriteMessage(ws.TextMessage, []byte(line)); err != nil {
+				if !client.sendEnvelope("log", line) {
 					return
 				}
-			case <-done:
+			case <-client.done:
 				return
 			}
 		}
@@ -176,20 +193,22 @@ func WsServerSetup(c fiber.Ctx) error {
 	}
 
 	logger.Info("[WsServerSetup] Client connected job="+jobID, nil)
+	lastEventID, _ := strconv.ParseInt(c.Query("last_event_id"), 10, 64)
 	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
 		defer conn.Close()
+		client := newWSClient(conn)
 
-		ch, unsubscribe := job.Subscribe()
+		ch, unsubscribe := job.SubscribeAfter(lastEventID)
 		defer func() {
+			client.close()
 			unsubscribe()
 			logger.Info("[WsServerSetup] Client disconnected job="+jobID, nil)
 		}()
 
-		done := make(chan struct{})
 		go func() {
-			defer close(done)
 			for {
 				if _, _, err := conn.ReadMessage(); err != nil {
+					client.close()
 					return
 				}
 			}
@@ -199,12 +218,13 @@ func WsServerSetup(c fiber.Ctx) error {
 			select {
 			case event, ok := <-ch:
 				if !ok {
+					client.close()
 					return
 				}
-				if err := conn.WriteMessage(ws.TextMessage, event.JSON()); err != nil {
+				if !client.send(event.JSON()) {
 					return
 				}
-			case <-done:
+			case <-client.done:
 				return
 			}
 		}

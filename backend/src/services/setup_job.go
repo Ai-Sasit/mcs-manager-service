@@ -9,6 +9,7 @@ import (
 )
 
 type SetupEvent struct {
+	ID       int64  `json:"id"`
 	Type     string `json:"type"`
 	Step     string `json:"step"`
 	Status   string `json:"status"`
@@ -21,6 +22,7 @@ type SetupJob struct {
 	ID      string
 	events  []SetupEvent
 	clients map[chan SetupEvent]struct{}
+	nextID  int64
 	done    bool
 	mu      sync.RWMutex
 }
@@ -64,6 +66,8 @@ func (m *SetupJobManager) DeleteAfter(id string, delay time.Duration) {
 
 func (j *SetupJob) Publish(event SetupEvent) {
 	j.mu.Lock()
+	j.nextID++
+	event.ID = j.nextID
 	j.events = append(j.events, event)
 	if event.Status == "success" || event.Status == "failed" {
 		j.done = true
@@ -84,11 +88,17 @@ func (j *SetupJob) Publish(event SetupEvent) {
 }
 
 func (j *SetupJob) Subscribe() (<-chan SetupEvent, func()) {
+	return j.SubscribeAfter(0)
+}
+
+func (j *SetupJob) SubscribeAfter(lastEventID int64) (<-chan SetupEvent, func()) {
 	ch := make(chan SetupEvent, 32)
 
 	j.mu.Lock()
 	for _, event := range j.events {
-		ch <- event
+		if event.ID > lastEventID {
+			ch <- event
+		}
 	}
 	if j.done {
 		close(ch)
