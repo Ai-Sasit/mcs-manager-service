@@ -31,25 +31,30 @@ export function useResourceHistory(maxDataPoints = 60) {
     const runtime = snapshot.runtime || {};
     const servers = snapshot.servers || {};
 
-    // Add new data points
-    history.value.timestamps.push(timestamp);
-    history.value.cpu.push(node.cpu_percent ?? 0);
-    history.value.memory.push(node.memory_percent ?? 0);
-    history.value.disk.push(node.disk_percent ?? 0);
-    history.value.memoryUsedMB.push(node.memory_used_mb ?? 0);
-    history.value.memoryTotalMB.push(node.memory_total_mb ?? 0);
-    history.value.diskUsedMB.push(node.disk_used_mb ?? 0);
-    history.value.diskTotalMB.push(node.disk_total_mb ?? 0);
-    history.value.serverRunning.push(servers.running ?? 0);
-    history.value.serverTotal.push(servers.total ?? 0);
-    history.value.goroutines.push(runtime.goroutines ?? 0);
+    // Clone existing arrays and append new data points
+    const updated = {
+      timestamps: [...history.value.timestamps, timestamp],
+      cpu: [...history.value.cpu, node.cpu_percent ?? 0],
+      memory: [...history.value.memory, node.memory_percent ?? 0],
+      disk: [...history.value.disk, node.disk_percent ?? 0],
+      memoryUsedMB: [...history.value.memoryUsedMB, node.memory_used_mb ?? 0],
+      memoryTotalMB: [...history.value.memoryTotalMB, node.memory_total_mb ?? 0],
+      diskUsedMB: [...history.value.diskUsedMB, node.disk_used_mb ?? 0],
+      diskTotalMB: [...history.value.diskTotalMB, node.disk_total_mb ?? 0],
+      serverRunning: [...history.value.serverRunning, servers.running ?? 0],
+      serverTotal: [...history.value.serverTotal, servers.total ?? 0],
+      goroutines: [...history.value.goroutines, runtime.goroutines ?? 0],
+    };
 
     // Trim to max data points (circular buffer behavior)
-    if (history.value.timestamps.length > maxDataPoints) {
-      Object.keys(history.value).forEach((key) => {
-        history.value[key].shift();
+    if (updated.timestamps.length > maxDataPoints) {
+      Object.keys(updated).forEach((key) => {
+        updated[key] = updated[key].slice(1);
       });
     }
+
+    // Replace entire object to ensure reactivity through prop chains
+    history.value = updated;
   }
 
   /**

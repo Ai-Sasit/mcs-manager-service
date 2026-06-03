@@ -16,7 +16,7 @@
     </div>
 
     <el-tabs v-model="activeTab" class="resource-tabs">
-      <el-tab-pane label="Current Stats" name="stats">
+      <el-tab-pane label="Current Stats" name="stats" class="resource-content">
         <div class="stats-grid">
           <div class="stat-card card">
             <div class="stat-header">

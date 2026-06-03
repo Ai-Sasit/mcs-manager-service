@@ -79,160 +79,132 @@ const props = defineProps({
 
 const chartRef = ref(null);
 
-const chartOption = computed(() => ({
-  tooltip: {
-    trigger: "axis",
-    backgroundColor: "rgba(255, 255, 255, 0.98)",
-    borderColor: "#e5e7eb",
-    borderWidth: 1,
-    padding: [8, 12],
-    textStyle: {
-      color: "#111827",
-      fontSize: 12,
-    },
-    axisPointer: {
-      type: "line",
-      lineStyle: {
-        color: "#9ca3af",
-        width: 1,
-        type: "solid",
+const chartOption = computed(() => {
+  const areaColor = props.areaStyle ? props.color : undefined;
+  return {
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "rgba(255, 255, 255, 0.98)",
+      borderColor: "#e5e7eb",
+      borderWidth: 1,
+      padding: [8, 12],
+      textStyle: {
+        color: "#111827",
+        fontSize: 12,
       },
-    },
-  },
-  grid: {
-    left: "2%",
-    right: "2%",
-    bottom: props.showDataZoom ? "12%" : "2%",
-    top: "8%",
-    containLabel: true,
-  },
-  xAxis: {
-    type: "category",
-    boundaryGap: false,
-    data: props.timeLabels,
-    axisLine: {
-      show: true,
-      lineStyle: {
-        color: "#e5e7eb",
-        width: 1,
-      },
-    },
-    axisTick: {
-      show: false,
-    },
-    axisLabel: {
-      color: "#6b7280",
-      fontSize: 11,
-      interval: Math.floor(props.timeLabels.length / 8) || 0,
-      hideOverlap: true,
-    },
-  },
-  yAxis: {
-    type: "value",
-    min: props.minValue,
-    max: props.maxValue,
-    axisLine: {
-      show: true,
-      lineStyle: {
-        color: "#e5e7eb",
-        width: 1,
-      },
-    },
-    axisTick: {
-      show: false,
-    },
-    axisLabel: {
-      color: "#6b7280",
-      fontSize: 11,
-    },
-    splitLine: {
-      lineStyle: {
-        color: "#e5e7eb",
-        width: 1,
-        type: "solid",
-      },
-    },
-  },
-  dataZoom: props.showDataZoom
-    ? [
-        {
-          type: "inside",
-          start: 0,
-          end: 100,
-          zoomOnMouseWheel: true,
-          moveOnMouseMove: true,
+      axisPointer: {
+        type: "line",
+        lineStyle: {
+          color: "#9ca3af",
+          width: 1,
+          type: "solid",
         },
-      ]
-    : [],
-  series: [
-    {
-      name: props.title,
-      type: "line",
-      smooth: props.smooth,
-      symbol: "circle",
-      symbolSize: 6,
-      sampling: "lttb",
-      itemStyle: {
-        color: props.color,
-        borderWidth: 2,
-        borderColor: "#111827",
       },
-      lineStyle: {
-        width: 2,
-        color: props.color,
-      },
-      areaStyle: props.areaStyle
-        ? {
-            color: props.color,
-            opacity: 0.6,
-          }
-        : null,
-      data: props.data,
     },
-  ],
-}));
+    grid: {
+      left: "2%",
+      right: "2%",
+      bottom: props.showDataZoom ? "12%" : "2%",
+      top: "8%",
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: props.timeLabels,
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: "#e5e7eb",
+          width: 1,
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: "#6b7280",
+        fontSize: 11,
+        interval: Math.floor(props.timeLabels.length / 8) || 0,
+        hideOverlap: true,
+      },
+    },
+    yAxis: {
+      type: "value",
+      min: props.minValue,
+      max: props.maxValue,
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: "#e5e7eb",
+          width: 1,
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: "#6b7280",
+        fontSize: 11,
+      },
+      splitLine: {
+        lineStyle: {
+          color: "#e5e7eb",
+          width: 1,
+          type: "solid",
+        },
+      },
+    },
+    dataZoom: props.showDataZoom
+      ? [
+          {
+            type: "inside",
+            start: 0,
+            end: 100,
+            zoomOnMouseWheel: true,
+            moveOnMouseMove: true,
+          },
+        ]
+      : [],
+    series: [
+      {
+        name: props.title,
+        type: "line",
+        smooth: props.smooth,
+        symbol: "circle",
+        symbolSize: 6,
+        sampling: "lttb",
+        itemStyle: {
+          color: props.color,
+          borderWidth: 2,
+          borderColor: "#111827",
+        },
+        lineStyle: {
+          width: 2,
+          color: props.color,
+        },
+        areaStyle: props.areaStyle
+          ? {
+              color: areaColor,
+              opacity: 0.6,
+            }
+          : null,
+        data: props.data,
+      },
+    ],
+  };
+});
 
-// Watch for chart option changes and update chart incrementally
+// Force chart to re-render on data changes (deep watch on data + labels)
 watch(
-  () => props.data,
-  (newData, oldData) => {
-    if (chartRef.value && chartRef.value.chart) {
-      // If data length changed, update the entire chart
-      if (!oldData || newData.length !== oldData.length) {
-        chartRef.value.setOption(
-          {
-            xAxis: {
-              data: props.timeLabels,
-            },
-            series: [
-              {
-                data: newData,
-              },
-            ],
-          },
-          {
-            replaceMerge: ["xAxis", "series"],
-          },
-        );
-      }
+  () => [props.data, props.timeLabels],
+  () => {
+    const chart = chartRef.value?.chart;
+    if (chart) {
+      chart.setOption(chartOption.value, { notMerge: true });
     }
   },
-  { deep: false },
-);
-
-// Watch for time labels changes
-watch(
-  () => props.timeLabels,
-  (newLabels) => {
-    if (chartRef.value && chartRef.value.chart) {
-      chartRef.value.setOption({
-        xAxis: {
-          data: newLabels,
-        },
-      });
-    }
-  },
-  { deep: false },
+  { deep: true },
 );
 </script>
 

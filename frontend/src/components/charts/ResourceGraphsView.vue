@@ -1,12 +1,6 @@
 <template>
   <div class="resource-graphs">
-    <div class="graphs-header">
-      <div class="graphs-info">
-        <span class="info-label">{{ dataPointCount }} points</span>
-        <span class="info-separator">·</span>
-        <span class="info-label">{{ timeRangeLabel }}</span>
-      </div>
-    </div>
+    <div class="graphs-header"></div>
 
     <div v-if="dataPointCount === 0" class="no-data">
       <p>Collecting data...</p>
@@ -25,7 +19,6 @@
           color="#f59e0b"
           :max-value="100"
           :show-data-zoom="true"
-          :key="`cpu-${dataPointCount}`"
         />
       </div>
 
@@ -41,7 +34,6 @@
           color="#10b981"
           :max-value="100"
           :show-data-zoom="true"
-          :key="`memory-${dataPointCount}`"
         />
       </div>
 
@@ -57,7 +49,6 @@
           color="#3b82f6"
           :max-value="100"
           :show-data-zoom="true"
-          :key="`disk-${dataPointCount}`"
         />
       </div>
 
@@ -72,7 +63,6 @@
           :time-labels="timeLabels"
           color="#8b5cf6"
           :show-data-zoom="true"
-          :key="`memory-mb-${dataPointCount}`"
         />
       </div>
 
@@ -89,7 +79,6 @@
           :smooth="false"
           :area-style="false"
           :show-data-zoom="true"
-          :key="`servers-${dataPointCount}`"
         />
       </div>
 
@@ -104,7 +93,6 @@
           :time-labels="timeLabels"
           color="#06b6d4"
           :show-data-zoom="true"
-          :key="`goroutines-${dataPointCount}`"
         />
       </div>
     </div>
