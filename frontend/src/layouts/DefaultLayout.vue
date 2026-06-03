@@ -120,6 +120,14 @@
             <el-icon size="18"><Cpu /></el-icon>
             <span>Resources</span>
           </router-link>
+          <router-link
+            to="/port-monitor"
+            class="nav-item"
+            :class="{ active: route.name === 'port-monitor' }"
+          >
+            <el-icon size="18"><Odometer /></el-icon>
+            <span>Port Finder</span>
+          </router-link>
 
           <router-link
             to="/users"

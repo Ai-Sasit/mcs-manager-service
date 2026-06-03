@@ -193,14 +193,16 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { Close } from "@element-plus/icons-vue";
 import apiClient from "@/api/client";
-import { useServerSetupProgress } from "@/composables/useServerSetupProgress";
+import { useServerSetupStream } from "@/composables/useServerSetupStream";
 import {
   DEFAULT_JAVA_PORT,
   DEFAULT_BEDROCK_PORT,
   DEFAULT_MAX_PLAYERS,
   DEFAULT_MEMORY_MB,
 } from "@/constants";
-import { getApiErrorMessage, isApiSuccess } from "@/utils/apiError";
+import { getApiErrorMessage } from "@/utils/apiError";
+
+// Note: isApiSuccess is no longer needed since we switched to SSE streaming
 
 const emit = defineEmits(["close", "created"]);
 
@@ -217,11 +219,11 @@ const form = ref({
 const versions = ref([]);
 const loadingVersions = ref(false);
 const creating = ref(false);
-const error = ref(null);
-const setupEvents = ref([]);
-const setupPercent = ref(0);
-const setupConnectionState = ref("idle");
-let setupSocket = null;
+let error = ref(null);
+let setupEvents = ref([]);
+let setupPercent = ref(0);
+let setupConnectionState = ref("idle");
+let setupStream = null;
 
 async function fetchVersions() {
   loadingVersions.value = true;
@@ -260,44 +262,43 @@ async function handleCreate() {
   error.value = null;
   setupEvents.value = [];
   setupPercent.value = 0;
-  if (setupSocket) {
-    setupSocket.disconnect();
-    setupSocket = null;
+  if (setupStream) {
+    setupStream.disconnect();
+    setupStream = null;
   }
 
   try {
-    const { data } = await apiClient.post("/servers/setup-jobs", form.value);
-    if (!isApiSuccess(data) || !data.data?.job_id) {
-      throw new Error(data.message || "Failed to start server setup");
+    setupStream = useServerSetupStream();
+    // Reassign reactive refs so template directly binds to composable state
+    setupEvents = setupStream.setupEvents;
+    setupPercent = setupStream.setupPercent;
+    setupConnectionState = setupStream.state;
+    error = setupStream.error;
+
+    const result = await setupStream.start({
+      name: form.value.name,
+      edition: form.value.edition,
+      server_type: form.value.server_type,
+      version: form.value.version,
+      port: form.value.port,
+      max_players: form.value.max_players,
+      memory_mb: form.value.memory_mb,
+    });
+
+    if (result && result.status === "failed") {
+      creating.value = false;
+      return;
     }
 
-    setupSocket = useServerSetupProgress(data.data.job_id);
-    setupSocket.onStateChange((state) => {
-      setupConnectionState.value = state;
-    });
-    setupSocket.onEvent((event) => {
-      setupPercent.value = Math.max(setupPercent.value, event.percent || 0);
-      setupEvents.value.push(event);
-
-      if (event.status === "failed") {
-        error.value = event.message || "Server setup failed";
-        creating.value = false;
-        setupSocket?.disconnect();
-        setupSocket = null;
-      }
-
-      if (event.status === "success" && event.step === "complete") {
-        creating.value = false;
-        emit("created", { id: event.server_id });
-        window.setTimeout(() => emit("close"), 650);
-      }
-    });
-    setupSocket.onError((message) => {
-      error.value = message;
+    if (result && result.status === "success" && result.step === "complete") {
       creating.value = false;
-    });
-    setupSocket.connect();
-    setupConnectionState.value = setupSocket.state.value;
+      emit("created", { id: result.server_id });
+      window.setTimeout(() => emit("close"), 650);
+      return;
+    }
+
+    // Stream ended without a terminal event
+    creating.value = false;
   } catch (e) {
     error.value = getApiErrorMessage(e, "Failed to create server");
     creating.value = false;
@@ -306,7 +307,7 @@ async function handleCreate() {
 
 onMounted(fetchVersions);
 onUnmounted(() => {
-  setupSocket?.disconnect();
+  setupStream?.disconnect();
 });
 </script>
 
@@ -504,7 +505,11 @@ label {
   padding-left: 12px;
 }
 @keyframes pulse {
-  from { opacity: 0.45; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

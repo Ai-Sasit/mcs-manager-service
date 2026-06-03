@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"mc-manage-backend/src/interfaces"
 	"mc-manage-backend/src/models"
@@ -92,6 +94,61 @@ func CreateServerSetupJob(c fiber.Ctx) error {
 	}()
 
 	return utils.SuccessResponse(c, "Server setup started", fiber.Map{"job_id": job.ID}, fiber.StatusCreated)
+}
+
+// CreateServerStream creates a new server and streams progress via SSE (Server-Sent Events).
+// This replaces the WebSocket-based /servers/setup-jobs + /ws/server-setup/:job_id flow.
+func CreateServerStream(c fiber.Ctx) error {
+	var req interfaces.CreateServerRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		logger.Warn("[CreateServerStream] Invalid request body: "+err.Error(), nil)
+		return utils.ErrorResponse(c, "Invalid request body", fiber.StatusBadRequest)
+	}
+
+	if req.Name == "" || req.Edition == "" || req.Version == "" {
+		logger.Warn("[CreateServerStream] Missing required fields", nil)
+		return utils.ErrorResponse(c, "name, edition, and version are required", fiber.StatusBadRequest)
+	}
+	if !isValidServerEdition(req.Edition) {
+		return utils.ErrorResponse(c, "edition must be java or bedrock", fiber.StatusBadRequest)
+	}
+
+	params := createServerParamsFromRequest(req)
+	logger.Info(fmt.Sprintf("[CreateServerStream] name=%s edition=%s version=%s", req.Name, req.Edition, req.Version), nil)
+
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no")
+
+	c.RequestCtx().SetBodyStreamWriter(func(w *bufio.Writer) {
+		flush := func() { w.Flush() }
+
+		writeSSE := func(event services.SetupEvent) {
+			data, err := json.Marshal(event)
+			if err != nil {
+				return
+			}
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flush()
+		}
+
+		config, err := services.CreateServerWithProgress(state, params, writeSSE)
+		if err != nil {
+			writeSSE(services.SetupEvent{
+				Type:    "setup",
+				Step:    "failed",
+				Status:  "failed",
+				Message: err.Error(),
+				Percent: 100,
+			})
+			return
+		}
+		utils.LogAudit("admin", "CREATE_SERVER", req.Name, "Created new server instance.")
+		logger.Info("[CreateServerStream] Done id="+config.ID, nil)
+	})
+
+	return nil
 }
 
 func createServerParamsFromRequest(req interfaces.CreateServerRequest) services.CreateServerParams {

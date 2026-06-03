@@ -49,6 +49,7 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	// Server CRUD
 	api.Get("/servers", controllers.ListServers)
 	api.Post("/servers/setup-jobs", controllers.CreateServerSetupJob)
+	api.Post("/servers/create-stream", controllers.CreateServerStream)
 	api.Post("/servers", controllers.CreateServer)
 	api.Get("/servers/:id", controllers.GetServer)
 	api.Delete("/servers/:id", controllers.DeleteServer)
