@@ -238,10 +238,28 @@ func WsServerSetup(c fiber.Ctx) error {
 			select {
 			case event, ok := <-ch:
 				if !ok {
+					// Channel closed by SetupJob after job completion.
+					// Send an application-level close frame so the client knows this is a clean completion.
+					client.sendClose(wsCloseJobComplete, "Setup complete")
+					// Give the close frame time to be written before tearing down.
+					time.Sleep(100 * time.Millisecond)
 					client.close()
 					return
 				}
 				if !client.send(event.JSON()) {
+					return
+				}
+				// If this is the terminal event, close gracefully after sending it.
+				if event.Status == "success" || event.Status == "failed" {
+					code := wsCloseJobComplete
+					reason := "Setup complete"
+					if event.Status == "failed" {
+						code = wsCloseJobFailed
+						reason = "Setup failed"
+					}
+					client.sendClose(code, reason)
+					time.Sleep(100 * time.Millisecond)
+					client.close()
 					return
 				}
 			case <-client.done:

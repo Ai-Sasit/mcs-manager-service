@@ -33,6 +33,10 @@ export function useServerSetupProgress(jobId) {
     return socket.onMessage((event) => {
       if (event.id) lastEventId = Math.max(lastEventId, event.id);
       cb(event);
+      // Auto-disconnect on terminal events to prevent reconnect loops
+      if (event.status === "success" || event.status === "failed") {
+        socket.disconnect();
+      }
     });
   }
 

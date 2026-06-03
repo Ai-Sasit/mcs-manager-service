@@ -16,6 +16,11 @@ const (
 	wsPingPeriod     = (wsPongWait * 9) / 10
 	wsMaxMessageSize = 65536
 	wsOutboxSize     = 256
+
+	// WebSocket close codes in the 4000-4999 range are reserved for application use.
+	// The browser WebSocket API treats 4000-4999 as "must not reconnect".
+	wsCloseJobComplete = 4000 // setup job finished successfully
+	wsCloseJobFailed   = 4001 // setup job failed
 )
 
 type wsEnvelope struct {
@@ -67,6 +72,14 @@ func (c *wsClient) close() {
 	c.once.Do(func() {
 		close(c.done)
 	})
+}
+
+// sendClose sends a WebSocket close frame with the given code and text.
+// This allows the backend to signal clean completion to the client.
+func (c *wsClient) sendClose(code int, text string) {
+	deadline := time.Now().Add(wsWriteWait)
+	c.conn.SetWriteDeadline(deadline)
+	_ = c.conn.WriteMessage(ws.CloseMessage, ws.FormatCloseMessage(code, text))
 }
 
 func (c *wsClient) wait() {
@@ -121,8 +134,7 @@ func (c *wsClient) writePump() {
 				return
 			}
 		case <-c.done:
-			c.conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
-			_ = c.conn.WriteMessage(ws.CloseMessage, ws.FormatCloseMessage(ws.CloseNormalClosure, ""))
+			c.sendClose(ws.CloseNormalClosure, "")
 			return
 		}
 	}

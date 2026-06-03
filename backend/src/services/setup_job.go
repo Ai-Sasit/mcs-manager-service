@@ -69,7 +69,8 @@ func (j *SetupJob) Publish(event SetupEvent) {
 	j.nextID++
 	event.ID = j.nextID
 	j.events = append(j.events, event)
-	if event.Status == "success" || event.Status == "failed" {
+	isTerminal := event.Status == "success" || event.Status == "failed"
+	if isTerminal {
 		j.done = true
 	}
 	for ch := range j.clients {
@@ -78,7 +79,12 @@ func (j *SetupJob) Publish(event SetupEvent) {
 		default:
 		}
 	}
-	if j.done {
+	if isTerminal {
+		// Delay closing channels to ensure subscribers have time to read the terminal event.
+		// Immediate close causes rapid reconnect loops on the client side.
+		j.mu.Unlock()
+		time.Sleep(500 * time.Millisecond)
+		j.mu.Lock()
 		for ch := range j.clients {
 			close(ch)
 			delete(j.clients, ch)

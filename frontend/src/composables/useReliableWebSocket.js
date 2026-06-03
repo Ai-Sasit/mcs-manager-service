@@ -58,6 +58,11 @@ export function useReliableWebSocket(urlFactory, options = {}) {
   function scheduleReconnect(event) {
     if (manuallyClosed) return;
     if (event?.code >= 4000 && event.code <= 4999) {
+      // 4000 = setup job completed, 4001 = setup job failed — clean completion, don't reconnect
+      if (event.code === 4000 || event.code === 4001) {
+        setState("closed");
+        return;
+      }
       setState("closed");
       error.value = "WebSocket authorization failed. Please sign in again.";
       errorListeners.forEach((cb) => cb(error.value, { url: describeUrl(), closeCode: event.code }));
