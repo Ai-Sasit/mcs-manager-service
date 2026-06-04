@@ -6,15 +6,40 @@
         <p class="page-subtitle">Manage server backups.</p>
       </div>
       <div class="header-actions">
-        <el-button type="primary" @click="createBackup" :loading="creating">
+        <el-button
+          type="primary"
+          @click="createBackup"
+          :loading="creating"
+          :disabled="!selectedServerId"
+        >
           <template #icon><PhPlus /></template>
           Create Backup
         </el-button>
-        <el-button @click="fetchBackups" :loading="loading">
+        <el-button
+          @click="fetchBackups"
+          :loading="loading"
+          :disabled="!selectedServerId"
+        >
           <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
+    </div>
+
+    <div class="select-row">
+      <el-select
+        v-model="selectedServerId"
+        placeholder="Select Server"
+        @change="onServerChange"
+        style="width: 250px"
+      >
+        <el-option
+          v-for="s in store.servers"
+          :key="s.id"
+          :label="s.name"
+          :value="s.id"
+        />
+      </el-select>
     </div>
 
     <div v-if="creating" class="info-alert">
@@ -31,6 +56,12 @@
       <p>Loading backups...</p>
     </div>
 
+    <div v-else-if="!selectedServerId" class="placeholder-card card">
+      <div class="placeholder-icon">💾</div>
+      <h3>Select a Server</h3>
+      <p>Choose a server to view its backups.</p>
+    </div>
+
     <div v-else-if="backups.length === 0" class="placeholder-card card">
       <div class="placeholder-icon">💾</div>
       <h3>No Backups</h3>
@@ -40,7 +71,6 @@
     <div v-else class="card" style="padding: 24px">
       <el-table :data="backups" style="width: 100%">
         <el-table-column prop="name" label="Backup Name" min-width="200" />
-        <el-table-column prop="server_name" label="Server" width="150" />
         <el-table-column label="Size" width="120">
           <template #default="{ row }">
             {{ formatSize(row.size) }}
@@ -51,19 +81,11 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="160" align="center">
+        <el-table-column label="Actions" width="100" align="center">
           <template #default="{ row }">
             <el-popconfirm
-              title="Restore this backup?"
-              @confirm="handleRestore(row)"
-            >
-              <template #reference>
-                <el-button size="small" @click="loadLines(row)">View</el-button>
-              </template>
-            </el-popconfirm>
-            <el-popconfirm
               title="Delete this backup?"
-              @confirm="handleDelete(row.id)"
+              @confirm="handleDelete(row.name)"
             >
               <template #reference>
                 <el-button type="danger" size="small" plain>
@@ -75,17 +97,6 @@
         </el-table-column>
       </el-table>
     </div>
-
-    <el-dialog v-model="showLines" title="Backup Content" width="600px">
-      <div class="lines-box">
-        <div v-for="(line, i) in logLines" :key="i" class="log-row">
-          {{ line }}
-        </div>
-        <div v-if="logLines.length === 0" class="text-muted">
-          No content available.
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -106,13 +117,15 @@ const store = useServersStore();
 const backups = ref([]);
 const loading = ref(false);
 const creating = ref(false);
-const showLines = ref(false);
-const logLines = ref([]);
+const selectedServerId = ref("");
 
 async function fetchBackups() {
+  if (!selectedServerId.value) return;
   loading.value = true;
   try {
-    const { data } = await apiClient.get("/backups");
+    const { data } = await apiClient.get(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups`,
+    );
     backups.value = data.data || [];
   } catch (e) {
     ElMessage.error("Failed to load backups: " + getApiErrorMessage(e));
@@ -121,10 +134,18 @@ async function fetchBackups() {
   }
 }
 
+function onServerChange() {
+  backups.value = [];
+  fetchBackups();
+}
+
 async function createBackup() {
+  if (!selectedServerId.value) return;
   creating.value = true;
   try {
-    await apiClient.post("/backups");
+    await apiClient.post(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups`,
+    );
     ElNotification.success(
       "Backup task initiated. It will run in the background.",
     );
@@ -136,33 +157,14 @@ async function createBackup() {
   }
 }
 
-async function handleDelete(id) {
+async function handleDelete(name) {
+  if (!selectedServerId.value) return;
   try {
-    await apiClient.delete(`/backups/${encodeURIComponent(id)}`);
+    await apiClient.delete(
+      `/servers/${encodeURIComponent(selectedServerId.value)}/backups/${encodeURIComponent(name)}`,
+    );
     ElMessage.success("Backup deleted.");
     fetchBackups();
-  } catch (e) {
-    ElMessage.error(getApiErrorMessage(e));
-  }
-}
-
-async function handleRestore(row) {
-  try {
-    await apiClient.post(`/backups/${encodeURIComponent(row.id)}/restore`);
-    ElMessage.success("Backup restore initiated.");
-  } catch (e) {
-    ElMessage.error(getApiErrorMessage(e));
-  }
-}
-
-async function loadLines(row) {
-  showLines.value = true;
-  logLines.value = [];
-  try {
-    const { data } = await apiClient.get(
-      `/backups/${encodeURIComponent(row.id)}/lines`,
-    );
-    logLines.value = data.data || [];
   } catch (e) {
     ElMessage.error(getApiErrorMessage(e));
   }
@@ -182,7 +184,6 @@ function formatDate(iso) {
 
 onMounted(() => {
   if (store.servers.length === 0) store.fetchServers();
-  fetchBackups();
 });
 </script>
 

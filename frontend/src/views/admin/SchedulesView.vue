@@ -31,7 +31,7 @@
     <div v-else class="schedules-grid">
       <div v-for="s in schedules" :key="s.id" class="schedule-card card">
         <div class="schedule-header">
-          <h4>{{ s.name }}</h4>
+          <h4>{{ s.task }}</h4>
           <el-popconfirm
             title="Delete this schedule?"
             @confirm="handleDelete(s.id)"
@@ -49,12 +49,12 @@
             <code>{{ s.cron }}</code>
           </div>
           <div class="schedule-meta">
-            <span class="meta-label">Action</span>
-            <el-tag size="small">{{ s.action }}</el-tag>
+            <span class="meta-label">Task</span>
+            <el-tag size="small">{{ s.task }}</el-tag>
           </div>
           <div class="schedule-meta">
             <span class="meta-label">Target</span>
-            <span>{{ s.server_name || s.target_id }}</span>
+            <span>{{ getServerName(s.server_id) }}</span>
           </div>
         </div>
       </div>
@@ -62,21 +62,19 @@
 
     <el-dialog v-model="showCreateDialog" title="New Schedule" width="480px">
       <el-form :model="form" label-position="top">
-        <el-form-item label="Name">
-          <el-input v-model="form.name" placeholder="e.g. Nightly Restart" />
-        </el-form-item>
         <el-form-item label="Cron Expression">
           <el-input v-model="form.cron" placeholder="0 3 * * *" />
         </el-form-item>
-        <el-form-item label="Action">
-          <el-select v-model="form.action" style="width: 100%">
+        <el-form-item label="Task">
+          <el-select v-model="form.task" style="width: 100%">
             <el-option label="Start" value="start" />
             <el-option label="Stop" value="stop" />
             <el-option label="Restart" value="restart" />
+            <el-option label="Backup" value="backup" />
           </el-select>
         </el-form-item>
         <el-form-item label="Target Server">
-          <el-select v-model="form.target_id" style="width: 100%">
+          <el-select v-model="form.server_id" style="width: 100%">
             <el-option
               v-for="s in store.servers"
               :key="s.id"
@@ -119,7 +117,12 @@ const loading = ref(false);
 const showCreateDialog = ref(false);
 const featureEnabled = ref(true);
 
-const form = ref({ name: "", cron: "", action: "start", target_id: "" });
+const form = ref({ cron: "", task: "start", server_id: "" });
+
+function getServerName(serverId) {
+  const s = store.servers.find((s) => s.id === serverId);
+  return s?.name || serverId;
+}
 
 async function fetchSchedules() {
   loading.value = true;
@@ -142,7 +145,7 @@ async function handleCreate() {
     await apiClient.post("/schedules", form.value);
     ElMessage.success("Schedule created.");
     showCreateDialog.value = false;
-    form.value = { name: "", cron: "", action: "start", target_id: "" };
+    form.value = { cron: "", task: "start", server_id: "" };
     fetchSchedules();
   } catch (e) {
     ElMessage.error(getApiErrorMessage(e));

@@ -79,11 +79,25 @@ func DeleteBackup(c fiber.Ctx) error {
 	id := c.Params("id")
 	name := c.Params("name")
 
-	path := filepath.Join("data", "backups", id, name)
-	if err := os.Remove(path); err != nil {
+	safeName := filepath.Base(name)
+	if safeName == "." || safeName == ".." || safeName == "" {
+		return utils.ErrorResponse(c, "Invalid backup name", fiber.StatusBadRequest)
+	}
+
+	backupDir := filepath.Join("data", "backups", id)
+	filePath := filepath.Join(backupDir, safeName)
+
+	// Security: ensure path stays within backups directory
+	cleanPath := filepath.Clean(filePath)
+	cleanDir := filepath.Clean(backupDir)
+	if len(cleanPath) <= len(cleanDir) || cleanPath[:len(cleanDir)] != cleanDir {
+		return utils.ErrorResponse(c, "Invalid backup name", fiber.StatusBadRequest)
+	}
+
+	if err := os.Remove(filePath); err != nil {
 		return utils.ErrorResponse(c, "Failed to delete backup: "+err.Error(), fiber.StatusInternalServerError)
 	}
 
-	utils.LogAudit("admin", "BACKUP_DELETE", id, "Deleted backup: "+name)
+	utils.LogAudit("admin", "BACKUP_DELETE", id, "Deleted backup: "+safeName)
 	return utils.SuccessResponse(c, "Backup deleted", nil)
 }

@@ -77,9 +77,7 @@ class ApiService {
   }
 
   async uploadPlugin(id, formData) {
-    return this.https.post(`/servers/${encodeURIComponent(id)}/plugins`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return this.https.post(`/servers/${encodeURIComponent(id)}/plugins`, formData);
   }
 
   async deletePlugin(id, name) {
@@ -94,9 +92,7 @@ class ApiService {
   }
 
   async uploadMod(id, formData) {
-    return this.https.post(`/servers/${encodeURIComponent(id)}/mods`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return this.https.post(`/servers/${encodeURIComponent(id)}/mods`, formData);
   }
 
   async deleteMod(id, name) {
