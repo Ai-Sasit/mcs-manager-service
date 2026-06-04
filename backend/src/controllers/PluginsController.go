@@ -42,7 +42,18 @@ func UploadPlugin(c fiber.Ctx) error {
 	}
 
 	filename := filepath.Base(file.Filename)
+	if filename == "." || filename == ".." {
+		return utils.ErrorResponse(c, "Invalid filename", fiber.StatusBadRequest)
+	}
+
 	destPath := filepath.Join(pluginsDir, filename)
+
+	// Security: ensure path stays within plugins dir
+	cleanPath := filepath.Clean(destPath)
+	cleanDir := filepath.Clean(pluginsDir)
+	if len(cleanPath) <= len(cleanDir) || cleanPath[:len(cleanDir)] != cleanDir {
+		return utils.ErrorResponse(c, "Invalid filename", fiber.StatusBadRequest)
+	}
 
 	src, err := file.Open()
 	if err != nil {

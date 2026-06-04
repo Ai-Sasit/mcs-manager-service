@@ -107,6 +107,7 @@ import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { getToken } from "@/utils/authStorage";
 
 const store = useServersStore();
 const plugins = ref([]);
@@ -115,7 +116,7 @@ const selectedServerId = ref("");
 
 const baseUrl = apiClient.defaults.baseURL || "";
 const authHeaders = computed(() => ({
-  Authorization: localStorage.getItem("mc_token") || "",
+  Authorization: `Bearer ${getToken() || ""}`,
 }));
 
 const selectedEdition = computed(() => {

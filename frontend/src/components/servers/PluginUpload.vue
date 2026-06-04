@@ -62,9 +62,6 @@ async function uploadFile(file) {
     await apiClient.post(
       `/servers/${encodeURIComponent(props.serverId)}/plugins`,
       fd,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
     );
     message.value = `Uploaded ${file.name}`;
     messageType.value = "success";
