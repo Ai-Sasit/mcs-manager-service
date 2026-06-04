@@ -5,10 +5,10 @@
         <h3>Panel Users</h3>
         <el-tag size="small" type="info">{{ users.length }} user(s)</el-tag>
       </div>
-      <el-button type="primary" @click="openCreate"
-        ><template #icon><PhPlus /></template
-        >Add User</el-button
-      >
+      <el-button type="primary" @click="openCreate">
+        <template #icon><PhPlus /></template>
+        Add User
+      </el-button>
     </div>
     <div class="card" style="padding: 24px">
       <el-table :data="users" style="width: 100%" v-loading="loading">
@@ -19,31 +19,30 @@
               :type="row.role === 'admin' ? 'danger' : 'info'"
               effect="light"
               size="small"
-              >{{ row.role }}</el-tag
             >
+              {{ row.role }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="Created" width="200">
-          <template #default="{ row }">{{
-            formatDate(row.created_at)
-          }}</template>
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
+          </template>
         </el-table-column>
         <el-table-column label="Actions" width="160" align="center">
           <template #default="{ row }">
-            <el-button
-              size="small"
-              circle
-              @click="openEdit(row)"
-              ><template #icon><PhPencilSimple /></template
-            />
+            <el-button size="small" circle @click="openEdit(row)">
+              <template #icon><PhPencilSimple /></template>
+            </el-button>
             <el-button
               size="small"
               type="danger"
               circle
-              ><template #icon><PhTrash /></template
               @click="handleDelete(row)"
               :disabled="row.username === currentUsername"
-            />
+            >
+              <template #icon><PhTrash /></template>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,12 +54,13 @@
       :close-on-click-modal="false"
     >
       <el-form :model="form" label-position="top">
-        <el-form-item label="Username"
-          ><el-input
+        <el-form-item label="Username">
+          <el-input
             v-model="form.username"
             placeholder="Enter username"
             :disabled="isEdit"
-        /></el-form-item>
+          />
+        </el-form-item>
         <el-form-item
           :label="isEdit ? 'New Password (leave blank to keep)' : 'Password'"
         >

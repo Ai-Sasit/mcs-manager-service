@@ -3,12 +3,8 @@
     <!-- Header -->
     <div class="detail-header card">
       <div class="header-left">
-        <el-button
-          text
-          size="small"
-          @click="$router.push('/')"
-          ><template #icon><PhArrowLeft /></template
-          >Back</el-button
+        <el-button text size="small" @click="$router.push('/')"
+          ><template #icon><PhArrowLeft /></template>Back</el-button
         >
         <div class="server-info">
           <h2 class="server-name">{{ server.name }}</h2>
@@ -43,8 +39,7 @@
         <el-button
           :disabled="loading || server.status === 'stopped'"
           @click="restart"
-          ><template #icon><PhArrowsClockwise /></template
-          >Restart</el-button
+          ><template #icon><PhArrowsClockwise /></template>Restart</el-button
         >
         <el-button
           v-if="server.status !== 'stopped'"
@@ -54,10 +49,7 @@
           @click="kill"
           ><template #icon><PhXCircle /></template>Kill</el-button
         >
-        <el-button
-          type="danger"
-          :loading="loading"
-          @click="confirmDelete"
+        <el-button type="danger" :loading="loading" @click="confirmDelete"
           ><template #icon><PhTrash /></template>Delete</el-button
         >
       </div>
@@ -116,11 +108,13 @@
           <div class="tab-content">
             <div class="tab-toolbar">
               <el-button size="small" @click="clearLogs"
-                ><template #icon><PhMinus /></template
-                >Clear Logs</el-button
+                ><template #icon><PhMinus /></template>Clear Logs</el-button
               >
               <div class="stream-tools">
-                <el-tag size="small" :type="logConnectionState === 'open' ? 'success' : 'warning'">
+                <el-tag
+                  size="small"
+                  :type="logConnectionState === 'open' ? 'success' : 'warning'"
+                >
                   {{ logConnectionState }}
                 </el-tag>
                 <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
@@ -148,7 +142,12 @@
         <el-tab-pane label="Terminal" name="terminal">
           <div class="tab-content">
             <div class="tab-toolbar">
-              <el-tag size="small" :type="terminalConnectionState === 'open' ? 'success' : 'warning'">
+              <el-tag
+                size="small"
+                :type="
+                  terminalConnectionState === 'open' ? 'success' : 'warning'
+                "
+              >
                 {{ terminalConnectionState }}
               </el-tag>
             </div>
@@ -172,7 +171,10 @@
               <el-input
                 v-model="cmdInput"
                 placeholder="Enter server command..."
-                :disabled="server.status !== 'running' || terminalConnectionState !== 'open'"
+                :disabled="
+                  server.status !== 'running' ||
+                  terminalConnectionState !== 'open'
+                "
                 @keyup.enter="sendCommand"
                 ><template #prepend
                   ><span class="cmd-prompt">/</span></template
@@ -180,7 +182,10 @@
               >
               <el-button
                 type="primary"
-                :disabled="server.status !== 'running' || terminalConnectionState !== 'open'"
+                :disabled="
+                  server.status !== 'running' ||
+                  terminalConnectionState !== 'open'
+                "
                 @click="sendCommand"
                 >Execute</el-button
               >
@@ -213,8 +218,8 @@
                     size="small"
                     :loading="configSaving"
                     @click="saveConfig"
-                    ><template #icon><PhCheckCircle /></template
-                    >Save Changes</el-button
+                    ><template #icon><PhCheckCircle /></template>Save
+                    Changes</el-button
                   >
                 </div>
               </div>
@@ -248,15 +253,20 @@
                   formatSize(row.size)
                 }}</template></el-table-column
               >
-              <el-table-column label="Action" width="80" align="center"
-                ><template #default="{ row }"
-                  ><el-button
+              <el-table-column label="Action" width="80" align="center">
+                <template #default="{ row }">
+                  <el-button
                     type="danger"
                     circle
                     size="small"
                     @click="removePlugin(row.name)"
-                    ><template #icon><PhTrash /></template></template
-              ></el-table-column>
+                  >
+                    <template #icon>
+                      <PhTrash />
+                    </template>
+                  </el-button>
+                </template>
+              </el-table-column>
             </el-table>
             <el-empty
               v-else
@@ -282,8 +292,7 @@
     >
       <template #extra
         ><el-button type="primary" @click="$router.push('/')"
-          ><template #icon><PhArrowLeft /></template
-          >Return Home</el-button
+          ><template #icon><PhArrowLeft /></template>Return Home</el-button
         ></template
       >
     </el-result>
@@ -529,8 +538,7 @@ async function kill() {
     termComp?.disconnect();
     ElMessage.success("Process terminated.");
   } catch (e) {
-    if (e !== "cancel")
-      ElMessage.error("Failed: " + getApiErrorMessage(e));
+    if (e !== "cancel") ElMessage.error("Failed: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
