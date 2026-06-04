@@ -85,6 +85,14 @@
             <span>Plugins</span>
           </router-link>
           <router-link
+            to="/mods"
+            class="nav-item"
+            :class="{ active: route.name === 'mods' }"
+          >
+            <el-icon size="18"><Puzzle /></el-icon>
+            <span>Mods</span>
+          </router-link>
+          <router-link
             to="/integrations"
             class="nav-item"
             :class="{ active: route.name === 'integrations' }"
@@ -198,6 +206,7 @@ import {
   Refresh,
   Calendar,
   Connection,
+  Puzzle,
   Link,
   DocumentCopy,
   Document,
@@ -224,6 +233,7 @@ const pageTitle = computed(() => {
     backups: "Backups",
     schedules: "Schedules",
     plugins: "Plugins",
+    mods: "Mods",
     integrations: "Integrations",
     "audit-logs": "Audit Logs",
     "backend-logs": "Backend Logs",

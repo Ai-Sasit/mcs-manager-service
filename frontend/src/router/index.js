@@ -64,6 +64,12 @@ const routes = [
     meta: { requiresAuth: true, roles: [ROLES.ADMIN, ROLES.USER] },
   },
   {
+    path: "/mods",
+    name: "mods",
+    component: () => import("@/views/admin/ModsView.vue"),
+    meta: { requiresAuth: true, roles: [ROLES.ADMIN, ROLES.USER] },
+  },
+  {
     path: "/integrations",
     name: "integrations",
     component: () => import("@/views/admin/PlaceholderView.vue"),

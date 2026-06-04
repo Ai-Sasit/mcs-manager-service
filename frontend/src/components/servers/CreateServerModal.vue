@@ -35,12 +35,12 @@
 
             <div class="form-group" v-if="form.edition === 'java'">
               <label>Server Type</label>
-              <div class="edition-selector">
+              <div class="type-selector">
                 <button
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'vanilla' }"
-                  @click="form.server_type = 'vanilla'"
+                  @click="setServerType('vanilla')"
                 >
                   🟢 <span>Vanilla</span>
                 </button>
@@ -48,7 +48,7 @@
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'paper' }"
-                  @click="form.server_type = 'paper'"
+                  @click="setServerType('paper')"
                 >
                   📄 <span>Paper</span>
                 </button>
@@ -56,9 +56,25 @@
                   type="button"
                   class="edition-btn"
                   :class="{ active: form.server_type === 'spigot' }"
-                  @click="form.server_type = 'spigot'"
+                  @click="setServerType('spigot')"
                 >
                   🔧 <span>Spigot</span>
+                </button>
+                <button
+                  type="button"
+                  class="edition-btn"
+                  :class="{ active: form.server_type === 'forge' }"
+                  @click="setServerType('forge')"
+                >
+                  ⚒️ <span>Forge</span>
+                </button>
+                <button
+                  type="button"
+                  class="edition-btn"
+                  :class="{ active: form.server_type === 'fabric' }"
+                  @click="setServerType('fabric')"
+                >
+                  🧵 <span>Fabric</span>
                 </button>
               </div>
               <p class="type-hint" v-if="form.server_type === 'paper'">
@@ -66,6 +82,13 @@
               </p>
               <p class="type-hint" v-else-if="form.server_type === 'spigot'">
                 Supports Bukkit/Spigot plugins.
+              </p>
+              <p class="type-hint" v-else-if="form.server_type === 'forge'">
+                Modded server with Forge mod loader. Upload mods via Mods page.
+              </p>
+              <p class="type-hint" v-else-if="form.server_type === 'fabric'">
+                Lightweight modded server with Fabric loader. Upload mods via
+                Mods page.
               </p>
               <p class="type-hint" v-else>
                 Official Mojang server. No plugin support.
@@ -210,6 +233,7 @@ const form = ref({
   name: "",
   edition: "java",
   server_type: "paper",
+  mod_loader: "",
   version: "",
   port: DEFAULT_JAVA_PORT,
   max_players: DEFAULT_MAX_PLAYERS,
@@ -249,7 +273,13 @@ function setEdition(edition) {
   form.value.port =
     edition === "java" ? DEFAULT_JAVA_PORT : DEFAULT_BEDROCK_PORT;
   form.value.server_type = edition === "java" ? "paper" : "";
+  form.value.mod_loader = "";
   fetchVersions();
+}
+
+function setServerType(type) {
+  form.value.server_type = type;
+  form.value.mod_loader = type === "forge" || type === "fabric" ? type : "";
 }
 
 function handleClose() {
@@ -279,6 +309,7 @@ async function handleCreate() {
       name: form.value.name,
       edition: form.value.edition,
       server_type: form.value.server_type,
+      mod_loader: form.value.mod_loader,
       version: form.value.version,
       port: form.value.port,
       max_players: form.value.max_players,
@@ -401,6 +432,11 @@ label {
 .edition-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
 .edition-btn {

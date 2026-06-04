@@ -9,6 +9,7 @@ import (
 	"mc-manage-backend/src/utils"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,6 +21,7 @@ type CreateServerParams struct {
 	Name       string
 	Edition    models.ServerEdition
 	ServerType string
+	ModLoader  string
 	Version    string
 	Port       uint16
 	MaxPlayers uint32
@@ -83,6 +85,12 @@ func createServer(state *AppState, params CreateServerParams, progress SetupProg
 		case "spigot":
 			emit("download", "active", "Downloading Spigot-compatible server jar", 42)
 			err = DownloadSpigotServer(params.Version, serverDir)
+		case "forge":
+			emit("download", "active", "Downloading Forge server", 42)
+			err = DownloadForgeServer(params.Version, serverDir)
+		case "fabric":
+			emit("download", "active", "Downloading Fabric server", 42)
+			err = DownloadFabricServer(params.Version, serverDir)
 		default:
 			emit("download", "active", "Downloading vanilla Java server jar", 42)
 			err = DownloadJavaServer(params.Version, serverDir)
@@ -150,11 +158,17 @@ func createServer(state *AppState, params CreateServerParams, progress SetupProg
 	}
 	os.MkdirAll(filepath.Join(serverDir, subDir), os.ModePerm)
 
+	// Create mods directory if using Forge or Fabric
+	if serverType == "forge" || serverType == "fabric" {
+		os.MkdirAll(filepath.Join(serverDir, "mods"), os.ModePerm)
+	}
+
 	config := &models.ServerConfig{
 		ID:         id,
 		Name:       params.Name,
 		Edition:    params.Edition,
 		ServerType: serverType,
+		ModLoader:  serverType,
 		Version:    params.Version,
 		Port:       port,
 		MaxPlayers: maxPlayers,
@@ -570,6 +584,338 @@ type DownloadEntry struct {
 
 func jsonUnmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
+}
+
+// DownloadForgeServer downloads the Forge installer and runs it to set up the server.
+// Forge versions before 1.17 use a different setup, but for modern Forge (1.17+)
+// we use the Forge installer to generate the server files.
+func DownloadForgeServer(version, dest string) error {
+	logger.Info("[DownloadForgeServer] Resolving Forge for version="+version, nil)
+
+	// Step 1: Get the Forge version list from the Forge Maven metadata
+	forgeVersion, err := resolveForgeVersion(version)
+	if err != nil {
+		return fmt.Errorf("failed to resolve Forge version: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("[DownloadForgeServer] Resolved Forge version: %s", forgeVersion), nil)
+
+	// Step 2: Download the Forge installer jar using the Maven format
+	// Format: forge-{mc_version}-{forge_version}-installer.jar
+	installerURL := fmt.Sprintf(
+		"https://maven.minecraftforge.net/net/minecraftforge/forge/%s-%s/forge-%s-%s-installer.jar",
+		version, forgeVersion, version, forgeVersion,
+	)
+	logger.Info("[DownloadForgeServer] Downloading installer from: "+installerURL, nil)
+
+	req, err := http.NewRequest("GET", installerURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download Forge installer: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Forge installer download failed: HTTP %d for version %s-%s", resp.StatusCode, version, forgeVersion)
+	}
+
+	installerPath := filepath.Join(dest, "forge-installer.jar")
+	installerData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(installerPath, installerData, 0644); err != nil {
+		return err
+	}
+	logger.Info("[DownloadForgeServer] Installer downloaded, running installServer", nil)
+
+	// Step 3: Run the Forge installer with --installServer
+	installCmd := exec.Command("java", "-jar", installerPath, "--installServer")
+	installCmd.Dir = dest
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	if err := installCmd.Run(); err != nil {
+		logger.Warn("[DownloadForgeServer] Forge installer failed: "+err.Error(), nil)
+		return fmt.Errorf("Forge installer failed: %w", err)
+	}
+
+	// Step 4: Remove the installer jar to clean up
+	os.Remove(installerPath)
+
+	// Step 5: Create mods directory
+	os.MkdirAll(filepath.Join(dest, "mods"), os.ModePerm)
+
+	logger.Info("[DownloadForgeServer] Forge server setup complete", nil)
+	return nil
+}
+
+// resolveForgeVersion queries the Forge Maven metadata to find the latest Forge version
+// for a given Minecraft version.
+func resolveForgeVersion(mcVersion string) (string, error) {
+	// The Forge maven metadata lists all available Forge versions for a Minecraft version
+	mavenURL := fmt.Sprintf(
+		"https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml",
+	)
+	resp, err := http.Get(mavenURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch Forge maven metadata: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse XML metadata to find versions matching mcVersion
+	// The Forge version format is: mc_version-forge_version
+	content := string(body)
+	lines := strings.Split(content, "\n")
+	var bestVersion string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "<version>") && strings.HasSuffix(line, "</version>") {
+			ver := strings.TrimPrefix(line, "<version>")
+			ver = strings.TrimSuffix(ver, "</version>")
+			// Check if this version is for our Minecraft version
+			// Format: mc_version-forge_version or mc_version-forge_version-recommended
+			if strings.HasPrefix(ver, mcVersion+"-") {
+				// Prefer recommended builds
+				if strings.Contains(ver, "recommended") {
+					return ver, nil
+				}
+				// Keep the latest non-recommended as fallback
+				parts := strings.Split(ver, "-")
+				if len(parts) >= 2 {
+					if bestVersion == "" || parts[1] > bestVersion {
+						bestVersion = ver
+					}
+				}
+			}
+		}
+	}
+
+	if bestVersion == "" {
+		// Fallback: try the latest version format (1.20.1-47.3.0 style)
+		return mcVersion + "-latest", fmt.Errorf("no Forge version found for Minecraft %s; please check Forge availability", mcVersion)
+	}
+
+	return bestVersion, nil
+}
+
+// DownloadFabricServer downloads the Fabric server launcher.
+// Fabric uses the Fabric Loader + Fabric API (optional) + vanilla server jar.
+func DownloadFabricServer(version, dest string) error {
+	logger.Info("[DownloadFabricServer] Resolving Fabric for version="+version, nil)
+
+	// Step 1: Fetch the latest Fabric loader version for the Minecraft version
+	loaderMetaURL := fmt.Sprintf("https://meta.fabricmc.net/v2/versions/loader/%s", version)
+	resp, err := http.Get(loaderMetaURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch Fabric loader versions: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Fabric API returned HTTP %d for version %s", resp.StatusCode, version)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Parse the JSON response to get the loader version
+	var loaderData []struct {
+		Loader struct {
+			Version string `json:"version"`
+			Stable  bool   `json:"stable"`
+			Build   int    `json:"build"`
+		} `json:"loader"`
+	}
+	if err := json.Unmarshal(body, &loaderData); err != nil {
+		return fmt.Errorf("failed to parse Fabric loader data: %w", err)
+	}
+
+	if len(loaderData) == 0 || loaderData[0].Loader.Version == "" {
+		return fmt.Errorf("no Fabric loader version found for Minecraft %s", version)
+	}
+
+	loaderVersion := loaderData[0].Loader.Version
+	logger.Info(fmt.Sprintf("[DownloadFabricServer] Latest Fabric loader: %s", loaderVersion), nil)
+
+	// Step 2: Get the Fabric installer version
+	installerVerResp, err := http.Get("https://meta.fabricmc.net/v2/versions/installer")
+	if err != nil {
+		return fmt.Errorf("failed to fetch Fabric installer versions: %w", err)
+	}
+	defer installerVerResp.Body.Close()
+
+	installerBody, err := io.ReadAll(installerVerResp.Body)
+	if err != nil {
+		return err
+	}
+
+	var installerVersions []struct {
+		Version string `json:"version"`
+		Stable  bool   `json:"stable"`
+	}
+	if err := json.Unmarshal(installerBody, &installerVersions); err != nil {
+		return fmt.Errorf("failed to parse Fabric installer versions: %w", err)
+	}
+
+	installerVersion := "1.0.0"
+	if len(installerVersions) > 0 {
+		installerVersion = installerVersions[0].Version
+	}
+
+	// Step 3: Download the Fabric server launcher jar using the server launcher endpoint
+	// The Fabric Meta API provides a direct server download URL
+	serverURL := fmt.Sprintf(
+		"https://meta.fabricmc.net/v2/versions/loader/%s/%s/%s/server/jar",
+		version, loaderVersion, installerVersion,
+	)
+	logger.Info("[DownloadFabricServer] Downloading server launcher from: "+serverURL, nil)
+
+	jarResp, err := http.Get(serverURL)
+	if err != nil {
+		return fmt.Errorf("failed to download Fabric server jar: %w", err)
+	}
+	defer jarResp.Body.Close()
+
+	if jarResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Fabric server jar download failed: HTTP %d for version %s", jarResp.StatusCode, version)
+	}
+
+	jarData, err := io.ReadAll(jarResp.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filepath.Join(dest, "fabric-server-launch.jar"), jarData, 0644); err != nil {
+		return err
+	}
+
+	// Step 4: Create mods directory
+	os.MkdirAll(filepath.Join(dest, "mods"), os.ModePerm)
+
+	logger.Info("[DownloadFabricServer] Fabric server setup complete", nil)
+	return nil
+}
+
+// ListMods returns the list of mod files for a Forge/Fabric server
+func ListMods(state *AppState, serverID string) ([]models.ModInfo, error) {
+	srv, ok := state.GetServer(serverID)
+	if !ok {
+		return nil, fmt.Errorf("server not found")
+	}
+
+	if srv.ModLoader != "forge" && srv.ModLoader != "fabric" {
+		return nil, fmt.Errorf("mods are only available for Forge or Fabric servers")
+	}
+
+	modsDir := filepath.Join(srv.ServerDir, "mods")
+
+	var mods []models.ModInfo
+	entries, err := os.ReadDir(modsDir)
+	if err != nil {
+		return mods, nil // Return empty list if directory doesn't exist yet
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		mods = append(mods, models.ModInfo{
+			Name: entry.Name(),
+			Size: info.Size(),
+		})
+	}
+	return mods, nil
+}
+
+// UploadMod saves an uploaded mod file into the server's mods directory
+func UploadMod(state *AppState, serverID, filename string, reader io.Reader) error {
+	srv, ok := state.GetServer(serverID)
+	if !ok {
+		return fmt.Errorf("server not found")
+	}
+
+	if srv.ModLoader != "forge" && srv.ModLoader != "fabric" {
+		return fmt.Errorf("mods can only be uploaded to Forge or Fabric servers")
+	}
+
+	safeName := filepath.Base(filename)
+	if safeName == "." || safeName == ".." {
+		return fmt.Errorf("invalid filename")
+	}
+
+	modsDir := filepath.Join(srv.ServerDir, "mods")
+	if err := os.MkdirAll(modsDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create mods directory: %w", err)
+	}
+
+	destPath := filepath.Join(modsDir, safeName)
+
+	// Security: ensure path stays within mods dir
+	cleanPath := filepath.Clean(destPath)
+	cleanDir := filepath.Clean(modsDir)
+	if len(cleanPath) <= len(cleanDir) || cleanPath[:len(cleanDir)] != cleanDir {
+		return fmt.Errorf("invalid filename")
+	}
+
+	dst, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, reader); err != nil {
+		return fmt.Errorf("failed to save file: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteMod removes a mod file from the server's mods directory
+func DeleteMod(state *AppState, serverID, name string) error {
+	srv, ok := state.GetServer(serverID)
+	if !ok {
+		return fmt.Errorf("server not found")
+	}
+
+	if srv.ModLoader != "forge" && srv.ModLoader != "fabric" {
+		return fmt.Errorf("mods can only be deleted from Forge or Fabric servers")
+	}
+
+	safeName := filepath.Base(name)
+	if safeName == "." || safeName == ".." {
+		return fmt.Errorf("invalid filename")
+	}
+
+	modsDir := filepath.Join(srv.ServerDir, "mods")
+	filePath := filepath.Join(modsDir, safeName)
+
+	// Security: ensure path stays within mods dir
+	cleanPath := filepath.Clean(filePath)
+	cleanDir := filepath.Clean(modsDir)
+	if len(cleanPath) <= len(cleanDir) || cleanPath[:len(cleanDir)] != cleanDir {
+		return fmt.Errorf("invalid filename")
+	}
+
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("mod not found")
+	}
+	return nil
 }
 
 // mergeProperties merges override values into an existing properties file content

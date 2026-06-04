@@ -156,6 +156,7 @@ func createServerParamsFromRequest(req interfaces.CreateServerRequest) services.
 		Name:       req.Name,
 		Edition:    req.Edition,
 		ServerType: req.ServerType,
+		ModLoader:  req.ModLoader,
 		Version:    req.Version,
 	}
 	if req.Port != nil {

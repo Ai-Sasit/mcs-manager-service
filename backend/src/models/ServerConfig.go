@@ -19,6 +19,7 @@ type ServerConfig struct {
 	Name       string        `bson:"name" json:"name"`
 	Edition    ServerEdition `bson:"edition" json:"edition"`
 	ServerType string        `bson:"server_type" json:"server_type"`
+	ModLoader  string        `bson:"mod_loader,omitempty" json:"mod_loader,omitempty"`
 	Version    string        `bson:"version" json:"version"`
 	Port       uint16        `bson:"port" json:"port"`
 	MaxPlayers uint32        `bson:"max_players" json:"max_players"`
@@ -35,6 +36,11 @@ type VersionInfo struct {
 }
 
 type PluginInfo struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+}
+
+type ModInfo struct {
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 }

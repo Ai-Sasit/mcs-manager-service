@@ -88,6 +88,23 @@ class ApiService {
     );
   }
 
+  // ─── Mods (Forge/Fabric) ───
+  async listMods(id) {
+    return this.https.get(`/servers/${encodeURIComponent(id)}/mods`);
+  }
+
+  async uploadMod(id, formData) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/mods`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+
+  async deleteMod(id, name) {
+    return this.https.delete(
+      `/servers/${encodeURIComponent(id)}/mods/${encodeURIComponent(name)}`,
+    );
+  }
+
   // ─── Versions ───
   async getJavaVersions() {
     return this.https.get("/versions/java");

@@ -69,6 +69,11 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 	api.Post("/servers/:id/plugins", controllers.UploadPlugin)
 	api.Delete("/servers/:id/plugins/:name", controllers.DeletePlugin)
 
+	// Mods (Forge/Fabric)
+	api.Get("/servers/:id/mods", controllers.ListMods)
+	api.Post("/servers/:id/mods", controllers.UploadMod)
+	api.Delete("/servers/:id/mods/:name", controllers.DeleteMod)
+
 	// Versions
 	api.Get("/versions/java", controllers.ListJavaVersions)
 	api.Get("/versions/bedrock", controllers.ListBedrockVersions)

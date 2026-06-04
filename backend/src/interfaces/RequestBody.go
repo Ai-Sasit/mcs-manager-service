@@ -6,6 +6,7 @@ type CreateServerRequest struct {
 	Name       string               `json:"name" validate:"required"`
 	Edition    models.ServerEdition `json:"edition" validate:"required"`
 	ServerType string               `json:"server_type"`
+	ModLoader  string               `json:"mod_loader"`
 	Version    string               `json:"version" validate:"required"`
 	Port       *uint16              `json:"port,omitempty"`
 	MaxPlayers *uint32              `json:"max_players,omitempty"`
