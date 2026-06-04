@@ -1,118 +1,66 @@
 <template>
-  <div class="players-view page">
+  <div class="players-page">
     <div class="page-header">
       <div class="header-content">
-        <h2 class="page-title">Players Management</h2>
+        <h2 class="page-title">Online Players</h2>
         <p class="page-subtitle">
-          Manage server whitelists, ops, and player lists.
+          Monitor connected players across all servers.
         </p>
       </div>
       <div class="header-actions">
-        <el-select
-          v-model="selectedServerId"
-          placeholder="Select Server"
-          @change="fetchPlayers"
-          style="width: 250px"
-        >
-          <el-option
-            v-for="server in servers"
-            :key="server.id"
-            :label="server.name"
-            :value="server.id"
-          />
-        </el-select>
-        <el-button
-          :icon="Plus"
-          type="primary"
-          :disabled="!selectedServerId"
-          @click="showAddDialog = true"
-        >
+        <el-button type="primary" @click="showCreate = true">
+          <template #icon><PhPlus /></template>
           Add Player
         </el-button>
-        <el-button
-          :icon="Refresh"
-          @click="fetchPlayers"
-          :loading="loading"
-          :disabled="!selectedServerId"
-        >
+        <el-button @click="fetchPlayers" :loading="loading">
+          <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
     </div>
 
-    <el-card v-if="selectedServerId" v-loading="loading">
-      <el-table :data="players" stripe style="width: 100%">
-        <el-table-column prop="name" label="Player Name" />
-        <el-table-column prop="uuid" label="UUID" min-width="180">
-          <template #default="{ row }">
-            <code class="uuid-text">{{ row.uuid || "N/A" }}</code>
-          </template>
-        </el-table-column>
-        <el-table-column label="Role" width="120">
-          <template #default="{ row }">
-            <el-tag
-              :type="row.role === 'admin' ? 'danger' : 'success'"
-              size="small"
-            >
-              {{ row.role === "admin" ? "OP" : "Member" }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Actions" width="220" fixed="right">
-          <template #default="{ row }">
-            <el-button-group>
-              <el-button
-                v-if="row.role !== 'admin'"
-                size="small"
-                type="warning"
-                @click="updateRole(row.name, 'add_op')"
-                >Make OP</el-button
-              >
-              <el-button
-                v-else
-                size="small"
-                type="info"
-                @click="updateRole(row.name, 'remove_op')"
-                >De-OP</el-button
-              >
+    <div v-if="loading" class="loading-state">
+      <PhSpinner :size="32" class="spin" />
+      <p>Scanning fleet...</p>
+    </div>
 
-              <el-popconfirm
-                title="Remove from whitelist?"
-                @confirm="updateRole(row.name, 'remove_whitelist')"
-              >
-                <template #reference>
-                  <el-button size="small" type="danger">Remove</el-button>
-                </template>
-              </el-popconfirm>
-            </el-button-group>
+    <div v-else-if="players.length === 0" class="empty-state">
+      <div class="empty-icon">👤</div>
+      <h3>No Active Players</h3>
+      <p>No players are currently online across your fleet.</p>
+    </div>
+
+    <div v-else class="card" style="padding: 24px">
+      <el-table :data="players" style="width: 100%">
+        <el-table-column prop="username" label="Player" min-width="150" />
+        <el-table-column prop="server_name" label="Server" min-width="150" />
+        <el-table-column label="Status" width="120">
+          <template #default>
+            <el-tag type="success" size="small" effect="light">Online</el-tag>
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
-
-    <div v-else class="center-placeholder card">
-      <el-empty description="Please select a server to manage players" />
     </div>
 
-    <!-- Add Player Dialog -->
-    <el-dialog
-      v-model="showAddDialog"
-      title="Add Player to Whitelist"
-      width="400px"
-    >
-      <el-form :model="addForm" @submit.prevent="handleAddPlayer">
-        <el-form-item label="Player Name">
-          <el-input v-model="addForm.name" placeholder="Minecraft Username" />
+    <el-dialog v-model="showCreate" title="Add Player" width="400px">
+      <el-form :model="form" label-position="top">
+        <el-form-item label="Username">
+          <el-input v-model="form.username" placeholder="Player name" />
+        </el-form-item>
+        <el-form-item label="Server">
+          <el-select v-model="form.server_id" style="width: 100%">
+            <el-option
+              v-for="s in store.servers"
+              :key="s.id"
+              :label="s.name"
+              :value="s.id"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showAddDialog = false">Cancel</el-button>
-        <el-button
-          type="primary"
-          @click="handleAddPlayer"
-          :loading="actionLoading"
-          >Add</el-button
-        >
+        <el-button @click="showCreate = false">Cancel</el-button>
+        <el-button type="primary" @click="handleCreate">Add</el-button>
       </template>
     </el-dialog>
   </div>
@@ -120,88 +68,96 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { Plus, Refresh } from "@element-plus/icons-vue";
+import { PhPlus, PhArrowsClockwise, PhSpinner } from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
-const selectedServerId = ref("");
 const players = ref([]);
 const loading = ref(false);
-const actionLoading = ref(false);
-const showAddDialog = ref(false);
-const addForm = ref({ name: "" });
+const showCreate = ref(false);
 
-const servers = computed(() => store.servers);
+const form = ref({ username: "", server_id: "" });
 
 async function fetchPlayers() {
-  if (!selectedServerId.value) return;
   loading.value = true;
   try {
-    const { data } = await apiClient.get(
-      `/servers/${encodeURIComponent(selectedServerId.value)}/players`,
-    );
+    const { data } = await apiClient.get("/players");
     players.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to fetch players: " + getApiErrorMessage(e));
+    ElMessage.error("Failed to load players: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
 }
 
-async function updateRole(name, action) {
-  loading.value = true;
+async function handleCreate() {
   try {
-    const server = servers.value.find((s) => s.id === selectedServerId.value);
-    if (server.status !== "running") {
-      throw new Error("Server must be running to execute player commands");
-    }
-    await apiClient.post(
-      `/servers/${encodeURIComponent(selectedServerId.value)}/players`,
-      { name, action },
-    );
-    ElMessage.success("Player updated successfully (commands queued)");
-    // Since commands are background, wait a bit before refresh or just assume success
-    setTimeout(fetchPlayers, 1000);
+    await apiClient.post("/players", form.value);
+    ElMessage.success("Player added.");
+    showCreate.value = false;
+    form.value = { username: "", server_id: "" };
+    fetchPlayers();
   } catch (e) {
-    ElMessage.error(getApiErrorMessage(e, "Failed to update player"));
-  } finally {
-    loading.value = false;
+    ElMessage.error(getApiErrorMessage(e));
   }
 }
 
-async function handleAddPlayer() {
-  if (!addForm.value.name) return;
-  actionLoading.value = true;
-  try {
-    await updateRole(addForm.value.name, "add_whitelist");
-    showAddDialog.value = false;
-    addForm.value.name = "";
-  } finally {
-    actionLoading.value = false;
-  }
-}
-
-onMounted(async () => {
-  if (store.servers.length === 0) {
-    await store.fetchServers();
-  }
+onMounted(() => {
+  if (store.servers.length === 0) store.fetchServers();
+  fetchPlayers();
 });
 </script>
 
 <style scoped>
-.uuid-text {
-  font-family: monospace;
-  font-size: 11px;
-  background: var(--color-bg);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-.center-placeholder {
+.players-page {
+  animation: fadeIn 0.3s ease-out;
   display: flex;
-  justify-content: center;
-  padding: 80px 0;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 64px 32px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.spin {
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

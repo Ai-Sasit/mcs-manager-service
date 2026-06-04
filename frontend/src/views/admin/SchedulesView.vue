@@ -1,120 +1,113 @@
 <template>
-  <div class="schedules-view page">
+  <div v-if="featureEnabled" class="schedules-page">
     <div class="page-header">
       <div class="header-content">
-        <h2 class="page-title">Automated Schedules</h2>
-        <p class="page-subtitle">
-          Configure recurring tasks like backups and restarts.
-        </p>
+        <h2 class="page-title">Schedules</h2>
+        <p class="page-subtitle">Automate server lifecycle tasks.</p>
       </div>
       <div class="header-actions">
-        <el-button :icon="Plus" type="primary" @click="showCreateDialog = true">
+        <el-button @click="showCreateDialog = true" type="primary">
+          <template #icon><PhPlus /></template>
           New Schedule
         </el-button>
-        <el-button :icon="Refresh" @click="fetchSchedules" :loading="loading">
+        <el-button @click="fetchSchedules" :loading="loading">
+          <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
     </div>
 
-    <el-card v-loading="loading">
-      <el-table :data="schedules" stripe style="width: 100%">
-        <el-table-column label="Status" width="100">
-          <template #default="{ row }">
-            <el-switch
-              v-model="row.enabled"
-              @change="(val) => handleToggle(row.id, val)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="Server" width="200">
-          <template #default="{ row }">
-            {{ getServerName(row.server_id) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="task" label="Task" width="150">
-          <template #default="{ row }">
-            <el-tag :type="getTaskTag(row.task)">{{
-              row.task.toUpperCase()
-            }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="cron" label="Schedule (Cron)" />
-        <el-table-column label="Actions" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-popconfirm
-              title="Delete this schedule?"
-              @confirm="handleDelete(row.id)"
-            >
-              <template #reference>
-                <el-button :icon="Delete" type="danger" size="small" plain />
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty
-        v-if="schedules.length === 0 && !loading"
-        description="No schedules configured"
-      />
-    </el-card>
+    <div v-if="loading" class="loading-state">
+      <PhSpinner :size="32" class="spin" />
+      <p>Loading schedules...</p>
+    </div>
 
-    <!-- Create Schedule Dialog -->
-    <el-dialog
-      v-model="showCreateDialog"
-      title="Create Automated Task"
-      width="500px"
-    >
-      <el-form :model="form" label-width="120px">
-        <el-form-item label="Target Server">
-          <el-select
-            v-model="form.server_id"
-            placeholder="Select Server"
-            style="width: 100%"
+    <div v-else-if="schedules.length === 0" class="placeholder-card card">
+      <div class="placeholder-icon">📅</div>
+      <h3>No Schedules</h3>
+      <p>Create your first schedule to automate server tasks.</p>
+    </div>
+
+    <div v-else class="schedules-grid">
+      <div v-for="s in schedules" :key="s.id" class="schedule-card card">
+        <div class="schedule-header">
+          <h4>{{ s.name }}</h4>
+          <el-popconfirm
+            title="Delete this schedule?"
+            @confirm="handleDelete(s.id)"
           >
+            <template #reference>
+              <el-button type="danger" size="small" plain>
+                <template #icon><PhTrash /></template>
+              </el-button>
+            </template>
+          </el-popconfirm>
+        </div>
+        <div class="schedule-body">
+          <div class="schedule-meta">
+            <span class="meta-label">Cron</span>
+            <code>{{ s.cron }}</code>
+          </div>
+          <div class="schedule-meta">
+            <span class="meta-label">Action</span>
+            <el-tag size="small">{{ s.action }}</el-tag>
+          </div>
+          <div class="schedule-meta">
+            <span class="meta-label">Target</span>
+            <span>{{ s.server_name || s.target_id }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-dialog v-model="showCreateDialog" title="New Schedule" width="480px">
+      <el-form :model="form" label-position="top">
+        <el-form-item label="Name">
+          <el-input v-model="form.name" placeholder="e.g. Nightly Restart" />
+        </el-form-item>
+        <el-form-item label="Cron Expression">
+          <el-input v-model="form.cron" placeholder="0 3 * * *" />
+        </el-form-item>
+        <el-form-item label="Action">
+          <el-select v-model="form.action" style="width: 100%">
+            <el-option label="Start" value="start" />
+            <el-option label="Stop" value="stop" />
+            <el-option label="Restart" value="restart" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Target Server">
+          <el-select v-model="form.target_id" style="width: 100%">
             <el-option
-              v-for="s in servers"
+              v-for="s in store.servers"
               :key="s.id"
               :label="s.name"
               :value="s.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="Task Type">
-          <el-select
-            v-model="form.task"
-            placeholder="Select Task"
-            style="width: 100%"
-          >
-            <el-option label="Backup" value="backup" />
-            <el-option label="Restart" value="restart" />
-            <el-option label="Run Command" value="command" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="form.task === 'command'" label="Command">
-          <el-input v-model="form.command" placeholder="e.g. /say Hello" />
-        </el-form-item>
-        <el-form-item label="Schedule (Cron)">
-          <el-input
-            v-model="form.cron"
-            placeholder="0 0 * * * (Every midnight)"
-          />
-          <div class="helper-text">Format: Minute Hour Day Month DayOfWeek</div>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">Cancel</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="actionLoading"
-          >Create</el-button
-        >
+        <el-button type="primary" @click="handleCreate">Create</el-button>
       </template>
     </el-dialog>
+  </div>
+
+  <div v-else class="placeholder-card card">
+    <div class="placeholder-icon">📅</div>
+    <h2>Task Scheduler</h2>
+    <p>Feature is not available.</p>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { Plus, Refresh, Delete } from "@element-plus/icons-vue";
+import {
+  PhPlus,
+  PhArrowsClockwise,
+  PhTrash,
+  PhSpinner,
+} from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
@@ -123,17 +116,10 @@ import { getApiErrorMessage } from "@/utils/apiError";
 const store = useServersStore();
 const schedules = ref([]);
 const loading = ref(false);
-const actionLoading = ref(false);
 const showCreateDialog = ref(false);
+const featureEnabled = ref(true);
 
-const form = ref({
-  server_id: "",
-  task: "backup",
-  cron: "0 0 * * *",
-  command: "",
-});
-
-const servers = computed(() => store.servers);
+const form = ref({ name: "", cron: "", action: "start", target_id: "" });
 
 async function fetchSchedules() {
   loading.value = true;
@@ -141,73 +127,141 @@ async function fetchSchedules() {
     const { data } = await apiClient.get("/schedules");
     schedules.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to load schedules: " + getApiErrorMessage(e));
+    if (e.response?.status === 404) {
+      featureEnabled.value = false;
+    } else {
+      ElMessage.error("Failed to load schedules: " + getApiErrorMessage(e));
+    }
   } finally {
     loading.value = false;
   }
 }
 
 async function handleCreate() {
-  if (!form.value.server_id || !form.value.cron) {
-    return ElMessage.warning("Please fill all fields");
-  }
-  actionLoading.value = true;
   try {
     await apiClient.post("/schedules", form.value);
-    ElMessage.success("Schedule created");
+    ElMessage.success("Schedule created.");
     showCreateDialog.value = false;
+    form.value = { name: "", cron: "", action: "start", target_id: "" };
     fetchSchedules();
   } catch (e) {
-    ElMessage.error("Failed to create schedule: " + getApiErrorMessage(e));
-  } finally {
-    actionLoading.value = false;
-  }
-}
-
-async function handleToggle(id, enabled) {
-  try {
-    await apiClient.put(`/schedules/${encodeURIComponent(id)}/toggle`, {
-      enabled,
-    });
-  } catch (e) {
-    ElMessage.error("Failed to update schedule status: " + getApiErrorMessage(e));
-    fetchSchedules();
+    ElMessage.error(getApiErrorMessage(e));
   }
 }
 
 async function handleDelete(id) {
   try {
     await apiClient.delete(`/schedules/${encodeURIComponent(id)}`);
-    ElMessage.success("Schedule removed");
+    ElMessage.success("Schedule deleted.");
     fetchSchedules();
   } catch (e) {
-    ElMessage.error("Failed to delete schedule: " + getApiErrorMessage(e));
+    ElMessage.error(getApiErrorMessage(e));
   }
-}
-
-function getServerName(id) {
-  const s = servers.value.find((s) => s.id === id);
-  return s ? s.name : "System";
-}
-
-function getTaskTag(task) {
-  if (task === "backup") return "success";
-  if (task === "restart") return "danger";
-  return "warning";
 }
 
 onMounted(async () => {
-  if (store.servers.length === 0) {
-    await store.fetchServers();
-  }
+  if (store.servers.length === 0) await store.fetchServers();
   fetchSchedules();
 });
 </script>
 
 <style scoped>
-.helper-text {
+.schedules-page {
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.schedules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.schedule-card {
+  padding: 24px;
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.schedule-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.schedule-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-label {
   font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  margin-top: 4px;
+  width: 60px;
+}
+
+.schedule-meta code {
+  background: var(--color-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.placeholder-card {
+  text-align: center;
+  padding: 64px 32px;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.spin {
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

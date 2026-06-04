@@ -22,11 +22,11 @@
           />
         </el-select>
         <el-button
-          :icon="Refresh"
           @click="fetchFiles"
           :loading="loading"
           :disabled="!selectedServerId"
         >
+          <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
@@ -36,12 +36,8 @@
       <!-- File Tree -->
       <el-card class="file-tree-card card">
         <div class="breadcrumb-row">
-          <el-button
-            size="small"
-            :icon="ArrowLeft"
-            v-if="currentPath"
-            @click="goUp"
-            >Back</el-button
+          <el-button size="small" v-if="currentPath" @click="goUp"
+            ><template #icon><PhArrowLeft /></template>Back</el-button
           >
           <span class="path-text">{{ currentPath || "/" }}</span>
         </div>
@@ -55,8 +51,8 @@
           <el-table-column label="Name" min-width="180">
             <template #default="{ row }">
               <div class="file-name">
-                <el-icon v-if="row.is_dir"><Folder /></el-icon>
-                <el-icon v-else><Document /></el-icon>
+                <PhFolder v-if="row.is_dir" :size="16" />
+                <PhFile v-else :size="16" />
                 <span>{{ row.name }}</span>
               </div>
             </template>
@@ -76,10 +72,9 @@
           <el-button
             type="primary"
             size="small"
-            :icon="Check"
             @click="saveFile"
             :loading="saving"
-            >Save Changes</el-button
+            ><template #icon><PhCheck /></template>Save Changes</el-button
           >
         </div>
         <div v-if="editingFile" class="editor-content">
@@ -105,12 +100,12 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
 import {
-  Folder,
-  Document,
-  Refresh,
-  ArrowLeft,
-  Check,
-} from "@element-plus/icons-vue";
+  PhFolder,
+  PhFile,
+  PhArrowsClockwise,
+  PhArrowLeft,
+  PhCheck,
+} from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";

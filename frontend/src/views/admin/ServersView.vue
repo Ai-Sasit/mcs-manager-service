@@ -3,24 +3,35 @@
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title">Servers Management</h2>
-        <p class="page-subtitle">Manage, monitor, and configure all Minecraft server instances.</p>
+        <p class="page-subtitle">
+          Manage, monitor, and configure all Minecraft server instances.
+        </p>
       </div>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="showCreate = true">
+        <el-button type="primary" @click="showCreate = true">
+          <template #icon><PhPlus /></template>
           Create Server
         </el-button>
-        <el-button :icon="Refresh" @click="store.fetchServers" :loading="store.loading">
+        <el-button @click="store.fetchServers" :loading="store.loading">
+          <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
     </div>
 
     <el-card class="servers-card">
-      <el-table :data="store.servers" v-loading="store.loading" style="width: 100%">
+      <el-table
+        :data="store.servers"
+        v-loading="store.loading"
+        style="width: 100%"
+      >
         <el-table-column prop="name" label="Server Name" min-width="150" />
         <el-table-column prop="edition" label="Edition" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.edition === 'java' ? 'primary' : 'success'" effect="light">
+            <el-tag
+              :type="row.edition === 'java' ? 'primary' : 'success'"
+              effect="light"
+            >
               {{ row.edition.toUpperCase() }}
             </el-tag>
           </template>
@@ -94,7 +105,7 @@
 <script setup>
 import { ref, onMounted, reactive } from "vue";
 import { ElMessage } from "element-plus";
-import { Plus, Refresh } from "@element-plus/icons-vue";
+import { PhPlus, PhArrowsClockwise } from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -216,7 +227,11 @@ function handleCreated() {
 }
 
 @keyframes pulse {
-  from { opacity: 0.5; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

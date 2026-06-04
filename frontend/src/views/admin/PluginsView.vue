@@ -1,55 +1,71 @@
 <template>
-  <div class="plugins-view page">
+  <div class="plugins-page">
     <div class="page-header">
       <div class="header-content">
         <h2 class="page-title">Plugins & Addons</h2>
-        <p class="page-subtitle">
-          Extend your server with custom features and modifications.
-        </p>
+        <p class="page-subtitle">Manage server plugins and addons.</p>
       </div>
       <div class="header-actions">
-        <el-select
-          v-model="selectedServerId"
-          placeholder="Select Server"
-          @change="fetchPlugins"
-          style="width: 250px"
-        >
-          <el-option
-            v-for="server in servers"
-            :key="server.id"
-            :label="server.name"
-            :value="server.id"
-          />
-        </el-select>
         <el-upload
-          v-if="selectedServerId"
-          :action="uploadUrl"
-          :headers="uploadHeaders"
-          name="file"
-          :on-success="handleUploadSuccess"
-          :on-error="handleUploadError"
+          :action="`${baseUrl}/servers/${selectedServerId}/plugins`"
+          :headers="authHeaders"
+          :on-success="handleUploaded"
           :show-file-list="false"
-          accept=".jar,.zip,.mcpack"
+          :accept="
+            selectedEdition === 'java' ? '.jar' : '.mcpack,.mcaddon,.zip'
+          "
         >
-          <el-button :icon="Upload" type="primary">Upload Plugin</el-button>
+          <el-button type="primary">
+            <template #icon><PhUpload /></template>
+            Upload Plugin
+          </el-button>
         </el-upload>
-        <el-button
-          :icon="Refresh"
-          @click="fetchPlugins"
-          :loading="loading"
-          :disabled="!selectedServerId"
-        >
+        <el-button @click="fetchPlugins" :loading="loading">
+          <template #icon><PhArrowsClockwise /></template>
           Refresh
         </el-button>
       </div>
     </div>
 
-    <el-card v-if="selectedServerId">
-      <el-table :data="plugins" stripe style="width: 100%" v-loading="loading">
-        <el-table-column prop="name" label="Plugin Name">
+    <div class="select-row">
+      <el-select
+        v-model="selectedServerId"
+        placeholder="Select Server"
+        @change="onServerChange"
+        style="width: 250px"
+      >
+        <el-option
+          v-for="s in store.servers"
+          :key="s.id"
+          :label="s.name"
+          :value="s.id"
+        />
+      </el-select>
+    </div>
+
+    <div v-if="loading" class="loading-state">
+      <PhSpinner :size="32" class="spin" />
+      <p>Loading plugins...</p>
+    </div>
+
+    <div v-else-if="!selectedServerId" class="placeholder-card card">
+      <div class="placeholder-icon">🔌</div>
+      <h3>Select a Server</h3>
+      <p>Choose a server to manage its plugins.</p>
+    </div>
+
+    <div v-else-if="plugins.length === 0" class="placeholder-card card">
+      <div class="placeholder-icon">📦</div>
+      <h3>No Plugins</h3>
+      <p>No plugins installed for this server yet.</p>
+    </div>
+
+    <div v-else class="card" style="padding: 24px">
+      <el-table :data="plugins" style="width: 100%">
+        <el-table-column label="Name" min-width="180">
           <template #default="{ row }">
             <div class="plugin-info">
-              <el-icon><Connection /></el-icon>
+              <PhPlug :size="16" />
               <span>{{ row.name }}</span>
             </div>
           </template>
@@ -59,62 +75,52 @@
             {{ formatSize(row.size) }}
           </template>
         </el-table-column>
-        <el-table-column
-          label="Actions"
-          width="120"
-          fixed="right"
-          align="center"
-        >
+        <el-table-column label="Action" width="100" align="center">
           <template #default="{ row }">
             <el-popconfirm
               title="Delete this plugin?"
-              @confirm="deletePlugin(row.name)"
+              @confirm="handleDelete(row.name)"
             >
               <template #reference>
-                <el-button :icon="Delete" type="danger" size="small" plain />
+                <el-button type="danger" size="small" plain>
+                  <template #icon><PhTrash /></template>
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty
-        v-if="plugins.length === 0 && !loading"
-        description="No plugins found on this server"
-      />
-    </el-card>
-
-    <div v-else class="center-placeholder card">
-      <el-empty description="Please select a server to manage its plugins" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { Upload, Refresh, Delete, Connection } from "@element-plus/icons-vue";
+import {
+  PhUpload,
+  PhArrowsClockwise,
+  PhTrash,
+  PhPlug,
+  PhSpinner,
+} from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
-import { API_BASE_URL } from "@/constants";
-import { getToken } from "@/utils/authStorage";
 import { useServersStore } from "@/stores/servers";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
-const selectedServerId = ref("");
 const plugins = ref([]);
 const loading = ref(false);
+const selectedServerId = ref("");
 
-const servers = computed(() => store.servers);
+const baseUrl = apiClient.defaults.baseURL || "";
+const authHeaders = computed(() => ({
+  Authorization: localStorage.getItem("mc_token") || "",
+}));
 
-const uploadUrl = computed(() => {
-  return `${API_BASE_URL}/servers/${selectedServerId.value}/plugins`;
-});
-
-const uploadHeaders = computed(() => {
-  const token = getToken();
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+const selectedEdition = computed(() => {
+  const s = store.servers.find((s) => s.id === selectedServerId.value);
+  return s?.edition || "java";
 });
 
 async function fetchPlugins() {
@@ -126,55 +132,105 @@ async function fetchPlugins() {
     );
     plugins.value = data.data || [];
   } catch (e) {
-    ElMessage.error("Failed to fetch plugins: " + getApiErrorMessage(e));
+    plugins.value = [];
+    ElMessage.error("Failed to load plugins: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
 }
 
-function handleUploadSuccess() {
-  ElMessage.success("Plugin uploaded and ready for next server start");
+function onServerChange() {
+  plugins.value = [];
   fetchPlugins();
 }
 
-function handleUploadError(error) {
-  ElMessage.error("Failed to upload plugin: " + getApiErrorMessage(error));
+function handleUploaded() {
+  ElMessage.success("Plugin uploaded successfully.");
+  fetchPlugins();
 }
 
-async function deletePlugin(name) {
+async function handleDelete(name) {
   try {
     await apiClient.delete(
       `/servers/${encodeURIComponent(selectedServerId.value)}/plugins/${encodeURIComponent(name)}`,
     );
-    ElMessage.success("Plugin deleted");
+    ElMessage.success("Plugin deleted.");
     fetchPlugins();
   } catch (e) {
-    ElMessage.error("Failed to delete plugin: " + getApiErrorMessage(e));
+    ElMessage.error(getApiErrorMessage(e));
   }
 }
 
 function formatSize(bytes) {
+  if (!bytes) return "—";
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
-onMounted(async () => {
-  if (store.servers.length === 0) {
-    await store.fetchServers();
-  }
+onMounted(() => {
+  if (store.servers.length === 0) store.fetchServers();
 });
 </script>
 
 <style scoped>
+.plugins-page {
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
 .plugin-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
-.center-placeholder {
+
+.placeholder-card {
+  text-align: center;
+  padding: 64px 32px;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.spin {
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.select-row {
   display: flex;
-  justify-content: center;
-  padding: 80px 0;
+  align-items: center;
 }
 </style>

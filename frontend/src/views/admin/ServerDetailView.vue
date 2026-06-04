@@ -6,8 +6,8 @@
         <el-button
           text
           size="small"
-          :icon="ArrowLeft"
           @click="$router.push('/')"
+          ><template #icon><PhArrowLeft /></template
           >Back</el-button
         >
         <div class="server-info">
@@ -34,17 +34,16 @@
           v-if="server.status === 'stopped'"
           type="primary"
           :loading="loading"
-          :icon="VideoPlay"
           @click="start"
-          >Start</el-button
+          ><template #icon><PhPlay /></template>Start</el-button
         >
-        <el-button v-else :loading="loading" :icon="VideoPause" @click="stop"
-          >Stop</el-button
+        <el-button v-else :loading="loading" @click="stop"
+          ><template #icon><PhPause /></template>Stop</el-button
         >
         <el-button
           :disabled="loading || server.status === 'stopped'"
-          :icon="RefreshRight"
           @click="restart"
+          ><template #icon><PhArrowsClockwise /></template
           >Restart</el-button
         >
         <el-button
@@ -52,16 +51,14 @@
           type="danger"
           plain
           :loading="loading"
-          :icon="CircleClose"
           @click="kill"
-          >Kill</el-button
+          ><template #icon><PhXCircle /></template>Kill</el-button
         >
         <el-button
           type="danger"
           :loading="loading"
-          :icon="Delete"
           @click="confirmDelete"
-          >Delete</el-button
+          ><template #icon><PhTrash /></template>Delete</el-button
         >
       </div>
     </div>
@@ -118,7 +115,8 @@
         <el-tab-pane label="Live Logs" name="logs">
           <div class="tab-content">
             <div class="tab-toolbar">
-              <el-button size="small" :icon="Remove" @click="clearLogs"
+              <el-button size="small" @click="clearLogs"
+                ><template #icon><PhMinus /></template
                 >Clear Logs</el-button
               >
               <div class="stream-tools">
@@ -193,7 +191,7 @@
         <el-tab-pane label="Config" name="config">
           <div class="tab-content">
             <div v-if="configLoading" class="center-info">
-              <el-icon class="spin" size="24"><Loading /></el-icon>
+              <PhSpinner :size="24" class="spin" />
               <p>Reading configuration...</p>
             </div>
             <div v-else-if="configError" class="center-info">
@@ -214,8 +212,8 @@
                     type="primary"
                     size="small"
                     :loading="configSaving"
-                    :icon="CircleCheck"
                     @click="saveConfig"
+                    ><template #icon><PhCheckCircle /></template
                     >Save Changes</el-button
                   >
                 </div>
@@ -256,8 +254,8 @@
                     type="danger"
                     circle
                     size="small"
-                    :icon="Delete"
-                    @click="removePlugin(row.name)" /></template
+                    @click="removePlugin(row.name)"
+                    ><template #icon><PhTrash /></template></template
               ></el-table-column>
             </el-table>
             <el-empty
@@ -272,7 +270,7 @@
   </div>
 
   <div v-else-if="loadingServer" class="center-info full-page">
-    <el-icon class="spin" size="32"><Loading /></el-icon>
+    <PhSpinner :size="32" class="spin" />
     <p>Loading instance data...</p>
   </div>
 
@@ -283,7 +281,8 @@
       sub-title="The requested server instance does not exist or has been deleted."
     >
       <template #extra
-        ><el-button type="primary" :icon="ArrowLeft" @click="$router.push('/')"
+        ><el-button type="primary" @click="$router.push('/')"
+          ><template #icon><PhArrowLeft /></template
           >Return Home</el-button
         ></template
       >
@@ -295,16 +294,16 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  ArrowLeft,
-  VideoPlay,
-  VideoPause,
-  RefreshRight,
-  Delete,
-  Loading,
-  CircleCheck,
-  CircleClose,
-  Remove,
-} from "@element-plus/icons-vue";
+  PhArrowLeft,
+  PhPlay,
+  PhPause,
+  PhArrowsClockwise,
+  PhTrash,
+  PhSpinner,
+  PhCheckCircle,
+  PhXCircle,
+  PhMinus,
+} from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { useServerLogs } from "@/composables/useServerLogs";
 import { useServerTerminal } from "@/composables/useServerTerminal";

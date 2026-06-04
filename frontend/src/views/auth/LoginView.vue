@@ -4,7 +4,7 @@
       <div class="login-logo">
         <div class="brand-line">
           <div class="logo-mark">
-            <el-icon size="22" color="#ffffff"><Monitor /></el-icon>
+            <PhDesktop :size="22" color="#ffffff" />
           </div>
           <span>MC Manage</span>
         </div>
@@ -67,7 +67,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { Monitor } from "@element-plus/icons-vue";
+import { PhDesktop } from "@phosphor-icons/vue";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const router = useRouter();
@@ -114,7 +114,12 @@ async function handleLogin() {
   justify-content: flex-end;
   padding: 48px 7vw;
   background:
-    linear-gradient(90deg, rgba(244, 252, 248, 0.18), rgba(240, 253, 250, 0.44) 52%, rgba(255, 255, 255, 0.28)),
+    linear-gradient(
+      90deg,
+      rgba(244, 252, 248, 0.18),
+      rgba(240, 253, 250, 0.44) 52%,
+      rgba(255, 255, 255, 0.28)
+    ),
     url("/login-bg-light.webp") center / cover no-repeat,
     #eaf7ef;
 }
@@ -124,8 +129,17 @@ async function handleLogin() {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.62), transparent 34%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(236, 253, 245, 0.28) 56%, rgba(255, 255, 255, 0.62));
+    radial-gradient(
+      circle at 22% 18%,
+      rgba(255, 255, 255, 0.62),
+      transparent 34%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(236, 253, 245, 0.28) 56%,
+      rgba(255, 255, 255, 0.62)
+    );
   pointer-events: none;
 }
 
@@ -160,7 +174,11 @@ async function handleLogin() {
   width: 44px;
   height: 44px;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-accent)
+  );
   display: inline-flex;
   align-items: center;
   justify-content: center;

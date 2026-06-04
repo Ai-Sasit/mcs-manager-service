@@ -12,22 +12,19 @@
           v-model="searchPortInput"
           placeholder="Lookup Port (e.g. 25565)"
           class="lookup-input"
-          :prefix-icon="Search"
           round
           clearable
           @keyup.enter="handleSearch"
         >
+          <template #prefix><PhMagnifyingGlass /></template>
           <template #append>
-            <el-button
-              :icon="Search"
-              @click="handleSearch"
-              :loading="searchLoading"
-              >Lookup</el-button
+            <el-button @click="handleSearch" :loading="searchLoading"
+              ><template #icon><PhMagnifyingGlass /></template>Lookup</el-button
             >
           </template>
         </el-input>
-        <el-button round :icon="Refresh" @click="refresh" :loading="loading"
-          >Refresh</el-button
+        <el-button round @click="refresh" :loading="loading"
+          ><template #icon><PhArrowsClockwise /></template>Refresh</el-button
         >
       </div>
     </div>
@@ -38,7 +35,7 @@
         <div class="stat-header">
           <span class="stat-title">Listening Ports</span>
           <div class="stat-icon primary">
-            <el-icon size="20"><Connection /></el-icon>
+            <PhPlug :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -49,7 +46,7 @@
         <div class="stat-header">
           <span class="stat-title">Active PIDs</span>
           <div class="stat-icon success">
-            <el-icon size="20"><Cpu /></el-icon>
+            <PhCpu :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -60,7 +57,7 @@
         <div class="stat-header">
           <span class="stat-title">Network Type</span>
           <div class="stat-icon warning">
-            <el-icon size="20"><Odometer /></el-icon>
+            <PhGauge :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -86,10 +83,12 @@
       <div v-else-if="searchResult" class="found-process-card glass-card">
         <div class="result-header">
           <div class="result-title">
-            <el-icon class="pulse-icon"><Compass /></el-icon>
+            <PhCompass :size="20" class="pulse-icon" />
             <span>Process Found on Port {{ searchResult.port }}</span>
           </div>
-          <el-button link :icon="Close" @click="searchResult = null" />
+          <el-button link @click="searchResult = null"
+            ><template #icon><PhX /></template
+          ></el-button>
         </div>
         <div class="result-body">
           <div class="process-meta">
@@ -109,9 +108,9 @@
           <el-button
             type="danger"
             round
-            :icon="CircleClose"
             @click="handleKillPid(searchResult.pid)"
           >
+            <template #icon><PhXCircle /></template>
             Terminate Process
           </el-button>
         </div>
@@ -167,21 +166,22 @@
         <el-table-column label="Actions" width="150" align="right">
           <template #default="{ row }">
             <el-dropdown trigger="click">
-              <el-button link :icon="More" />
+              <el-button link
+                ><template #icon><PhDotsThree /></template
+              ></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item
-                    :icon="View"
-                    @click="$router.push(`/server/${row.id}`)"
-                    >View Details</el-dropdown-item
+                  <el-dropdown-item @click="$router.push(`/server/${row.id}`)"
+                    ><template #icon><PhEye /></template>View
+                    Details</el-dropdown-item
                   >
                   <el-dropdown-item
                     v-if="row.status === 'running'"
                     divided
                     class="text-danger"
-                    :icon="CircleClose"
                     @click="handleKill(row)"
                   >
+                    <template #icon><PhXCircle /></template>
                     Force Kill (SIGKILL)
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -197,17 +197,17 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import {
-  Refresh,
-  Connection,
-  Cpu,
-  Odometer,
-  More,
-  View,
-  CircleClose,
-  Search,
-  Compass,
-  Close,
-} from "@element-plus/icons-vue";
+  PhArrowsClockwise,
+  PhPlug,
+  PhCpu,
+  PhGauge,
+  PhDotsThree,
+  PhEye,
+  PhXCircle,
+  PhMagnifyingGlass,
+  PhCompass,
+  PhX,
+} from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import { ElMessageBox, ElMessage } from "element-plus";
 import apiClient from "@/api/client";

@@ -6,7 +6,7 @@
           <div class="modal-header">
             <h2>Create New Server</h2>
             <button class="close-btn" :disabled="creating" @click="handleClose">
-              <el-icon size="18"><Close /></el-icon>
+              <PhX :size="18" weight="regular" />
             </button>
           </div>
 
@@ -214,7 +214,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import { Close } from "@element-plus/icons-vue";
+import { PhX } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { useServerSetupStream } from "@/composables/useServerSetupStream";
 import {

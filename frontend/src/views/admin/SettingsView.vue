@@ -1,178 +1,102 @@
 <template>
-  <div class="settings-view page">
+  <div class="settings-page">
     <div class="page-header">
       <div class="header-content">
-        <h2 class="page-title">Global Settings</h2>
-        <p class="page-subtitle">
-          Configure application-wide parameters and integrations.
-        </p>
+        <h2 class="page-title">Settings</h2>
+        <p class="page-subtitle">Application configuration.</p>
       </div>
       <div class="header-actions">
-        <el-button
-          type="primary"
-          :icon="Check"
-          @click="saveSettings"
-          :loading="saving"
-        >
-          Save Settings
+        <el-button type="primary" @click="saveSettings" :loading="saving">
+          <template #icon><PhCheck /></template>
+          Save
         </el-button>
       </div>
     </div>
-    <div class="settings-grid">
-      <el-card class="settings-card card">
-        <template #header
-          ><div class="card-header">
-            <span>General Configuration</span>
-          </div></template
-        >
-        <el-form :model="form" label-position="top">
-          <el-form-item label="Application Name">
-            <el-input
-              v-model="form.app_name"
-              placeholder="MC Management Dashboard"
-            />
-          </el-form-item>
-          <el-form-item label="Default Server RAM (MB)">
-            <el-input-number
-              v-model="form.default_ram"
-              :min="512"
-              :step="512"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-checkbox v-model="form.telemetry_enabled"
-              >Enable System Telemetry</el-checkbox
-            >
-            <p class="helper-text">
-              Collect anonymous data to improve the management platform.
-            </p>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      <el-card class="settings-card card">
-        <template #header
-          ><div class="card-header">
-            <span>External Integrations</span>
-          </div></template
-        >
-        <el-form :model="form" label-position="top">
-          <el-form-item label="Discord Webhook URL">
-            <el-input
-              v-model="form.discord_webhook"
-              placeholder="https://discord.com/api/webhooks/..."
-              type="password"
-              show-password
-            />
-            <p class="helper-text">
-              Used for global notifications (backups, server status changes).
-            </p>
-          </el-form-item>
-          <el-button type="info" plain disabled>Test Notification</el-button>
-        </el-form>
-      </el-card>
-      <el-card class="settings-card card danger-zone">
-        <template #header
-          ><div class="card-header">
-            <span style="color: var(--color-danger)">System Actions</span>
-          </div></template
-        >
-        <div class="danger-actions">
-          <div class="danger-item">
-            <div class="item-info">
-              <h4>Prune Audit Logs</h4>
-              <p>Delete audit logs older than 30 days.</p>
-            </div>
-            <el-button type="danger" plain size="small" disabled
-              >Prune</el-button
-            >
-          </div>
-          <el-divider />
-          <div class="danger-item">
-            <div class="item-info">
-              <h4>Factory Reset</h4>
-              <p>Clear all server configurations and system settings.</p>
-            </div>
-            <el-button type="danger" size="small" disabled>Reset</el-button>
-          </div>
-        </div>
-      </el-card>
+
+    <div class="card" style="padding: 24px">
+      <el-form :model="form" label-position="top" style="max-width: 600px">
+        <el-form-item label="Base Server Directory">
+          <el-input
+            v-model="form.base_dir"
+            placeholder="/opt/minecraft/servers"
+          />
+        </el-form-item>
+        <el-form-item label="Java Binary Path">
+          <el-input v-model="form.java_path" placeholder="java" />
+        </el-form-item>
+        <el-form-item label="Default Java Args">
+          <el-input v-model="form.java_args" placeholder="-Xms512M -Xmx2G" />
+        </el-form-item>
+        <el-form-item label="Max Concurrent Instances">
+          <el-input-number v-model="form.max_instances" :min="1" :max="50" />
+        </el-form-item>
+      </el-form>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { Check } from "@element-plus/icons-vue";
+import { PhCheck } from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
 
-const form = ref({
-  app_name: "",
-  default_ram: 2048,
-  discord_webhook: "",
-  telemetry_enabled: true,
-});
-const loading = ref(false);
 const saving = ref(false);
 
-async function fetchSettings() {
-  loading.value = true;
+const form = ref({
+  base_dir: "",
+  java_path: "",
+  java_args: "",
+  max_instances: 10,
+});
+
+async function loadSettings() {
   try {
-    const { data } = await apiClient.get("/settings");
-    form.value = data.data;
+    const { data } = await apiClient.get("/system/settings");
+    Object.assign(form.value, data.data || {});
   } catch (e) {
     ElMessage.error("Failed to load settings: " + getApiErrorMessage(e));
-  } finally {
-    loading.value = false;
   }
 }
 
 async function saveSettings() {
   saving.value = true;
   try {
-    await apiClient.put("/settings", form.value);
-    ElMessage.success("Global settings updated successfully");
+    await apiClient.put("/system/settings", form.value);
+    ElMessage.success("Settings updated.");
   } catch (e) {
-    ElMessage.error("Failed to update settings: " + getApiErrorMessage(e));
+    ElMessage.error(getApiErrorMessage(e));
   } finally {
     saving.value = false;
   }
 }
 
-onMounted(fetchSettings);
+onMounted(loadSettings);
 </script>
 
 <style scoped>
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+.settings-page {
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
-.settings-card {
-  height: min-content;
-}
-.helper-text {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: 4px;
-}
-.danger-zone {
-  border: 1px solid var(--color-danger-light);
-}
-.danger-item {
+
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.item-info h4 {
+
+.page-title {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: 24px;
+  font-weight: 600;
 }
-.item-info p {
+
+.page-subtitle {
   margin: 0;
-  font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 </style>

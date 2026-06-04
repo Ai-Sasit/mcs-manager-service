@@ -1,50 +1,74 @@
 <template>
-  <div class="server-card card float-hover" :class="{ 'live-card': server.status === 'running' }" @click="$router.push(`/server/${server.id}`)">
+  <div
+    class="server-card card float-hover"
+    :class="{ 'live-card': server.status === 'running' }"
+    @click="$router.push(`/server/${server.id}`)"
+  >
     <div class="card-top">
       <div class="card-title-row">
         <h3 class="server-name">{{ server.name }}</h3>
-        <div v-if="server.status === 'running'" class="live-indicator pulse-live"></div>
+        <div
+          v-if="server.status === 'running'"
+          class="live-indicator pulse-live"
+        ></div>
         <span v-else class="status-dot" :class="server.status"></span>
       </div>
       <div class="server-meta">
-        <el-tag size="small" :type="getStatusType(server.status)" effect="plain" class="status-tag">
+        <el-tag
+          size="small"
+          :type="getStatusType(server.status)"
+          effect="plain"
+          class="status-tag"
+        >
           {{ server.status.toUpperCase() }}
         </el-tag>
         <div class="meta-pills">
           <span class="meta-pill">v{{ server.version }}</span>
-          <span class="meta-pill">{{ server.edition === 'java' ? 'Java' : 'Bedrock' }}</span>
+          <span class="meta-pill">{{
+            server.edition === "java" ? "Java" : "Bedrock"
+          }}</span>
         </div>
       </div>
     </div>
 
     <div class="card-stats">
       <div class="stat-item">
-        <el-icon><Monitor /></el-icon>
+        <PhMonitor :size="14" />
         <span>{{ server.port }}</span>
       </div>
       <div class="stat-sep"></div>
       <div class="stat-item" v-if="server.edition === 'java'">
-        <el-icon><Cpu /></el-icon>
-        <span>{{ Math.round(server.memory_mb / 1024 * 10) / 10 }}GB</span>
+        <PhCpu :size="14" />
+        <span>{{ Math.round((server.memory_mb / 1024) * 10) / 10 }}GB</span>
       </div>
     </div>
 
     <div class="card-actions" @click.stop>
       <div class="action-group">
-        <el-tooltip :content="server.status === 'stopped' ? 'Start Server' : 'Stop Server'" placement="top">
+        <el-tooltip
+          :content="
+            server.status === 'stopped' ? 'Start Server' : 'Stop Server'
+          "
+          placement="top"
+        >
           <el-button
             circle
             :type="server.status === 'stopped' ? 'primary' : 'danger'"
-            :icon="server.status === 'stopped' ? VideoPlay : VideoPause"
             @click="$emit('start', server.id)"
-          />
+          >
+            <template #icon>
+              <PhPlay v-if="server.status === 'stopped'" />
+              <PhPause v-else />
+            </template>
+          </el-button>
         </el-tooltip>
         <el-tooltip content="Terminal" placement="top">
           <el-button
             circle
-            :icon="Cpu"
             @click="$router.push(`/server/${server.id}?tab=terminal`)"
-          />
+          >
+            <template #icon><PhTerminalWindow /></template>
+          </el-button>
         </el-tooltip>
       </div>
       <el-button
@@ -53,14 +77,21 @@
         @click="$router.push(`/server/${server.id}`)"
       >
         Manage
-        <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+        <template #icon><PhArrowRight /></template>
       </el-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { VideoPlay, VideoPause, ArrowRight, Monitor, Cpu } from "@element-plus/icons-vue";
+import {
+  PhPlay,
+  PhPause,
+  PhArrowRight,
+  PhMonitor,
+  PhCpu,
+  PhTerminalWindow,
+} from "@phosphor-icons/vue";
 
 defineProps({
   server: {
@@ -72,9 +103,9 @@ defineProps({
 defineEmits(["start", "stop"]);
 
 function getStatusType(status) {
-  if (status === 'running') return 'success';
-  if (status === 'starting') return 'warning';
-  return 'info';
+  if (status === "running") return "success";
+  if (status === "starting") return "warning";
+  return "info";
 }
 </script>
 
@@ -88,7 +119,7 @@ function getStatusType(status) {
 }
 
 .live-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -136,8 +167,13 @@ function getStatusType(status) {
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .server-meta {
@@ -186,11 +222,6 @@ function getStatusType(status) {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-secondary);
-}
-
-.stat-item .el-icon {
-  font-size: 14px;
-  color: var(--color-primary);
 }
 
 .stat-sep {

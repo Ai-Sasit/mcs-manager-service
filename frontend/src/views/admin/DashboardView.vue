@@ -6,16 +6,14 @@
         <p class="page-subtitle">Real-time status of your Minecraft network.</p>
       </div>
       <div class="header-actions">
-        <el-button round :icon="Plus" type="primary" @click="showCreate = true"
-          >New Server</el-button
-        >
-        <el-button
-          round
-          :icon="Refresh"
-          @click="refreshAll"
-          :loading="store.loading"
-          >Refresh</el-button
-        >
+        <el-button round type="primary" @click="showCreate = true"
+          >New Server
+          <template #icon><PhPlus /></template>
+        </el-button>
+        <el-button round @click="refreshAll" :loading="store.loading"
+          >Refresh
+          <template #icon><PhArrowsClockwise /></template>
+        </el-button>
       </div>
     </div>
 
@@ -25,7 +23,7 @@
         <div class="stat-header">
           <span class="stat-title">Instances</span>
           <div class="stat-icon green">
-            <el-icon size="20"><Grid /></el-icon>
+            <PhSquaresFour :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -40,7 +38,7 @@
         <div class="stat-header">
           <span class="stat-title">Active Now</span>
           <div class="stat-icon emerald">
-            <el-icon size="20"><CircleCheck /></el-icon>
+            <PhCheckCircle :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -58,7 +56,7 @@
         <div class="stat-header">
           <span class="stat-title">Node Load</span>
           <div class="stat-icon amber">
-            <el-icon size="20"><Cpu /></el-icon>
+            <PhCpu :size="20" />
           </div>
         </div>
         <div class="stat-main">
@@ -92,7 +90,7 @@
         </div>
 
         <div v-if="store.loading" class="center-state">
-          <el-icon class="spin" size="32"><Loading /></el-icon>
+          <PhSpinner :size="32" class="spin" />
           <p>Syncing fleet data...</p>
         </div>
 
@@ -199,14 +197,14 @@
             class="quick-box glass-card float-hover"
             @click="$router.push('/schedules')"
           >
-            <el-icon><Calendar /></el-icon>
+            <PhCalendar :size="24" />
             <span>Tasks</span>
           </div>
           <div
             class="quick-box glass-card float-hover"
             @click="$router.push('/backups')"
           >
-            <el-icon><Box /></el-icon>
+            <PhCube :size="24" />
             <span>Safety</span>
           </div>
         </div>
@@ -225,15 +223,15 @@
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { ElMessage } from "element-plus";
 import {
-  Plus,
-  Grid,
-  CircleCheck,
-  Refresh,
-  Cpu,
-  Loading,
-  Calendar,
-  Box,
-} from "@element-plus/icons-vue";
+  PhPlus,
+  PhSquaresFour,
+  PhCheckCircle,
+  PhArrowsClockwise,
+  PhCpu,
+  PhDotsThree,
+  PhCalendar,
+  PhCube,
+} from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import apiClient from "@/api/client";
 import ServerCard from "@/components/servers/ServerCard.vue";
@@ -278,11 +276,15 @@ const activePercentage = computed(() => {
 });
 
 const nodeMetrics = computed(() => resources.snapshot.value?.node || {});
-const nodeLoadPercentage = computed(() => clampPercent(nodeMetrics.value.cpu_percent));
+const nodeLoadPercentage = computed(() =>
+  clampPercent(nodeMetrics.value.cpu_percent),
+);
 const nodeLoadDisplay = computed(() =>
   resources.snapshot.value ? `${nodeLoadPercentage.value}%` : "—",
 );
-const ramPercentage = computed(() => clampPercent(nodeMetrics.value.memory_percent));
+const ramPercentage = computed(() =>
+  clampPercent(nodeMetrics.value.memory_percent),
+);
 const resourceError = computed(() => resources.error.value || "");
 
 const nodeLoadLabel = computed(() => {

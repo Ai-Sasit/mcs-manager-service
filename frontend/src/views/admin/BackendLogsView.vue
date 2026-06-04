@@ -1,87 +1,46 @@
 <template>
-  <div class="backend-logs-view">
-    <div class="toolbar card">
-      <div class="toolbar-left">
-        <el-select
-          v-model="selectedFile"
-          placeholder="Select log file"
-          style="width: 280px"
-          @change="loadLines"
+  <div class="logs-page">
+    <div class="page-header">
+      <div class="header-content">
+        <h2 class="page-title">Backend Logs</h2>
+        <p class="page-subtitle">Monitor application-level logs.</p>
+      </div>
+      <div class="header-actions">
+        <el-button @click="fetchLogs" :loading="loading">
+          <template #icon><PhArrowsClockwise /></template>Refresh</el-button
         >
-          <el-option v-for="f in files" :key="f" :label="f" :value="f" />
-        </el-select>
-        <el-select v-model="tailCount" style="width: 140px" @change="loadLines">
-          <el-option label="Last 100 lines" :value="100" />
-          <el-option label="Last 500 lines" :value="500" />
-          <el-option label="Last 1000 lines" :value="1000" />
-          <el-option label="Last 2000 lines" :value="2000" />
-          <el-option label="Last 5000 lines" :value="5000" />
-        </el-select>
+        <el-button @click="clearView">
+          <template #icon><PhTrash /></template>Clear</el-button
+        >
+      </div>
+    </div>
+
+    <div class="card" style="padding: 24px">
+      <div class="toolbar">
         <el-input
-          v-model="search"
+          v-model="filter"
           placeholder="Filter lines..."
+          size="small"
           clearable
-          style="width: 220px"
+          style="width: 300px"
         />
+        <el-select v-model="logLevel" size="small" style="width: 140px">
+          <el-option label="All" value="" />
+          <el-option label="INFO" value="info" />
+          <el-option label="WARN" value="warn" />
+          <el-option label="ERROR" value="error" />
+        </el-select>
       </div>
-      <div class="toolbar-right">
-        <el-switch
-          v-model="isLive"
-          active-text="Live Logs"
-          inactive-text=""
-          @change="toggleLive"
-        />
-        <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
-        <el-button @click="loadLines" :loading="loading"
-          ><el-icon><Refresh /></el-icon>Refresh</el-button
+      <div class="log-box" ref="logBox">
+        <div
+          v-for="(line, i) in filteredLines"
+          :key="i"
+          :class="['log-line', logLineClass(line)]"
         >
-        <el-button @click="clearView"
-          ><el-icon><Delete /></el-icon>Clear</el-button
-        >
-      </div>
-    </div>
-    <div class="stats-bar" v-if="selectedFile">
-      <span class="stat"
-        ><strong>{{ filteredLines.length }}</strong>
-        {{ search ? "matching" : "total" }} lines</span
-      >
-      <span class="stat" v-if="search"
-        >of <strong>{{ lines.length }}</strong> loaded</span
-      >
-      <span class="stat-sep" v-if="selectedFile">·</span>
-      <span class="stat">{{ selectedFile }}</span>
-      <el-tag
-        v-if="isLive"
-        :type="liveState === 'open' ? 'danger' : 'warning'"
-        size="small"
-        effect="dark"
-        class="live-tag"
-        >{{ liveState === "open" ? "LIVE" : liveState.toUpperCase() }}</el-tag
-      >
-    </div>
-    <div class="log-card card">
-      <div
-        class="log-box"
-        ref="logBox"
-        v-loading="loading"
-        element-loading-text="Loading logs..."
-      >
-        <template v-if="filteredLines.length > 0">
-          <div
-            v-for="(line, i) in filteredLines"
-            :key="i"
-            :class="['log-line', lineClass(line)]"
-          >
-            <span class="line-num">{{ lineOffset + i + 1 }}</span>
-            <span class="line-text">{{ line }}</span>
-          </div>
-        </template>
-        <div v-else-if="!loading" class="log-empty">
-          {{
-            selectedFile
-              ? "No lines match the current filter."
-              : "Select a log file above to view its contents."
-          }}
+          {{ line }}
+        </div>
+        <div v-if="filteredLines.length === 0" class="log-empty">
+          No log entries match the current filter.
         </div>
       </div>
     </div>
@@ -90,223 +49,153 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
-import { Refresh, Delete } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { PhArrowsClockwise, PhTrash } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { useBackendLogs } from "@/composables/useBackendLogs";
+import { ElMessage } from "element-plus";
 
-const files = ref([]);
-const selectedFile = ref("");
-const tailCount = ref(500);
-const search = ref("");
 const lines = ref([]);
+const filter = ref("");
+const logLevel = ref("");
 const loading = ref(false);
-const autoScroll = ref(true);
-const isLive = ref(false);
-const liveState = ref("idle");
-let liveSocket = null;
 const logBox = ref(null);
-const lineOffset = computed(() => 0);
+let socket = null;
 
 const filteredLines = computed(() => {
-  if (!search.value.trim()) return lines.value;
-  const q = search.value.toLowerCase();
-  return lines.value.filter((l) => l.toLowerCase().includes(q));
+  let result = lines.value;
+  if (logLevel.value) {
+    const level = logLevel.value.toUpperCase();
+    result = result.filter((l) => l.includes(`[${level}]`));
+  }
+  if (filter.value) {
+    const q = filter.value.toLowerCase();
+    result = result.filter((l) => l.toLowerCase().includes(q));
+  }
+  return result;
 });
 
-function lineClass(line) {
-  if (/\bERROR\b|\bFATAL\b/i.test(line)) return "log-error";
-  if (/\bWARN\b|\bWARNING\b/i.test(line)) return "log-warn";
-  if (/\bINFO\b/i.test(line)) return "log-info";
-  if (/\bDEBUG\b/i.test(line)) return "log-debug";
+function logLineClass(line) {
+  if (/\[ERROR\]/i.test(line)) return "log-error";
+  if (/\[WARN\]/i.test(line)) return "log-warn";
   return "";
 }
 
-async function loadFiles() {
-  try {
-    const { data } = await apiClient.get("/backend-logs");
-    files.value = data.data || [];
-    if (files.value.length > 0 && !selectedFile.value) {
-      selectedFile.value = files.value[0];
-      await loadLines();
-    }
-  } catch (e) {
-    ElMessage.error("Failed to load log file list: " + getApiErrorMessage(e));
-  }
+function scrollToBottom() {
+  nextTick(() => {
+    if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
+  });
 }
 
-async function loadLines() {
-  if (!selectedFile.value) return;
+function connectSocket() {
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  const url = `${protocol}://${location.host}/ws/backend-logs`;
+  socket = new WebSocket(url);
+
+  socket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.line) {
+        lines.value.push(msg.line);
+        if (lines.value.length > 1000) lines.value.shift();
+        scrollToBottom();
+      }
+    } catch {
+      lines.value.push(event.data);
+      if (lines.value.length > 1000) lines.value.shift();
+      scrollToBottom();
+    }
+  };
+
+  socket.onclose = () => {
+    setTimeout(() => connectSocket(), 3000);
+  };
+}
+
+async function fetchLogs() {
   loading.value = true;
   try {
-    const { data } = await apiClient.get(
-      `/backend-logs/file?file=${encodeURIComponent(selectedFile.value)}&tail=${tailCount.value}`,
-    );
+    const { data } = await apiClient.get("/system/logs");
     lines.value = data.data || [];
     scrollToBottom();
   } catch (e) {
-    ElMessage.error("Failed to load log file: " + getApiErrorMessage(e));
-    lines.value = [];
+    ElMessage.error("Failed to fetch logs: " + getApiErrorMessage(e));
   } finally {
     loading.value = false;
   }
 }
 
-function scrollToBottom() {
-  if (autoScroll.value) {
-    nextTick(() => {
-      if (logBox.value) logBox.value.scrollTop = logBox.value.scrollHeight;
-    });
-  }
-}
-
-function toggleLive() {
-  if (isLive.value) {
-    connectLive();
-  } else {
-    disconnectLive();
-  }
-}
-
-function connectLive() {
-  disconnectLive();
-  liveSocket = useBackendLogs();
-  liveState.value = liveSocket.state.value;
-  liveSocket.onStateChange((state) => {
-    liveState.value = state;
-  });
-  liveSocket.onLine((line) => {
-    lines.value.push(line);
-    if (lines.value.length > tailCount.value) lines.value.shift();
-    scrollToBottom();
-  });
-  liveSocket.onError((message) => {
-    liveState.value = liveSocket.state.value;
-    ElMessage.warning(message);
-  });
-  liveSocket.connect();
-  liveState.value = liveSocket.state.value;
-}
-
-function disconnectLive() {
-  if (liveSocket) {
-    liveSocket.disconnect();
-    liveSocket = null;
-  }
-  liveState.value = "closed";
-}
-
 function clearView() {
   lines.value = [];
 }
-watch(filteredLines, scrollToBottom);
-onMounted(loadFiles);
-onUnmounted(disconnectLive);
+
+onMounted(() => {
+  fetchLogs();
+  connectSocket();
+});
+
+onUnmounted(() => {
+  if (socket) socket.close();
+});
 </script>
 
 <style scoped>
-.backend-logs-view {
+.logs-page {
+  animation: fadeIn 0.3s ease-out;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
 .toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 12px;
-  padding: 16px 20px;
+  margin-bottom: 16px;
 }
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.stats-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  padding: 0 4px;
-}
-.stat strong {
-  color: var(--el-text-color-primary);
-}
-.stat-sep {
-  color: var(--el-border-color);
-}
-.live-tag {
-  margin-left: 8px;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-.log-card {
-  padding: 0;
-  overflow: hidden;
-}
+
 .log-box {
-  height: calc(100vh - 280px);
-  min-height: 400px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 16px;
+  height: 500px;
   overflow-y: auto;
-  padding: 16px 20px;
-  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-  font-size: 12.5px;
-  line-height: 1.65;
-  background: #0f1117;
-  color: #d1d5db;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  line-height: 1.7;
 }
+
 .log-line {
-  display: flex;
-  gap: 12px;
-  padding: 1px 0;
+  color: #e2e8f0;
 }
-.log-line:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 3px;
+
+.log-warn {
+  color: #f59e0b;
 }
-.line-num {
-  color: #4b5563;
-  user-select: none;
-  min-width: 44px;
-  text-align: right;
-  flex-shrink: 0;
+
+.log-error {
+  color: #ef4444;
 }
-.line-text {
-  white-space: pre-wrap;
-  word-break: break-all;
-  flex: 1;
-}
+
 .log-empty {
-  color: #4b5563;
+  color: #6b7280;
   font-style: italic;
   text-align: center;
-  margin-top: 60px;
-}
-.log-error .line-text {
-  color: #f87171;
-}
-.log-warn .line-text {
-  color: #fbbf24;
-}
-.log-info .line-text {
-  color: #d1d5db;
-}
-.log-debug .line-text {
-  color: #6b7280;
+  padding-top: 40px;
 }
 </style>

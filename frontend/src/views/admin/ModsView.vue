@@ -42,14 +42,17 @@
           :show-file-list="false"
           accept=".jar"
         >
-          <el-button :icon="Upload" type="primary">Upload Mod</el-button>
+          <el-button type="primary">
+            <PhUpload :size="16" class="btn-icon" />
+            Upload Mod
+          </el-button>
         </el-upload>
         <el-button
-          :icon="Refresh"
           @click="fetchMods"
           :loading="loading"
           :disabled="!selectedServerId"
         >
+          <PhArrowsClockwise :size="16" class="btn-icon" />
           Refresh
         </el-button>
       </div>
@@ -60,7 +63,7 @@
         <el-table-column prop="name" label="Mod Name">
           <template #default="{ row }">
             <div class="mod-info">
-              <el-icon><Connection /></el-icon>
+              <PhPlug :size="14" />
               <span>{{ row.name }}</span>
             </div>
           </template>
@@ -82,7 +85,9 @@
               @confirm="deleteMod(row.name)"
             >
               <template #reference>
-                <el-button :icon="Delete" type="danger" size="small" plain />
+                <el-button type="danger" size="small" plain>
+                  <PhTrash :size="14" />
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -104,7 +109,12 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { Upload, Refresh, Delete, Connection } from "@element-plus/icons-vue";
+import {
+  PhUpload,
+  PhArrowsClockwise,
+  PhTrash,
+  PhPlug,
+} from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { API_BASE_URL } from "@/constants";
@@ -200,5 +210,9 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   padding: 80px 0;
+}
+.btn-icon {
+  margin-right: 6px;
+  vertical-align: -2px;
 }
 </style>

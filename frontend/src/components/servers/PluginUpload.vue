@@ -15,7 +15,7 @@
         style="display: none"
       />
       <div class="dropzone-content">
-        <el-icon size="36" class="drop-icon"><Upload /></el-icon>
+        <PhUpload :size="36" class="drop-icon" />
         <p class="drop-text">
           Drop {{ edition === "java" ? "plugin (.jar)" : "addon" }} files here
         </p>
@@ -25,7 +25,7 @@
       </div>
     </div>
     <div v-if="uploading" class="upload-status">
-      <el-icon class="spin" size="16"><Loading /></el-icon>
+      <PhSpinner :size="16" class="spin" />
       Uploading...
     </div>
     <div v-if="message" class="upload-message" :class="messageType">
@@ -36,7 +36,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { Upload, Loading } from "@element-plus/icons-vue";
+import { PhUpload, PhSpinner } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
 

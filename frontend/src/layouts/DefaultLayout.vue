@@ -4,7 +4,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo-mark">
-          <el-icon size="20" color="#ffffff"><Monitor /></el-icon>
+          <PhMonitor :size="20" color="#ffffff" />
         </div>
         <span class="logo-text">MC Manage</span>
       </div>
@@ -17,7 +17,7 @@
             class="nav-item"
             :class="{ active: route.name === 'dashboard' }"
           >
-            <el-icon size="18"><Grid /></el-icon>
+            <PhSquaresFour :size="18" />
             <span>Dashboard</span>
           </router-link>
           <router-link
@@ -25,7 +25,7 @@
             class="nav-item"
             :class="{ active: route.name === 'servers' }"
           >
-            <el-icon size="18"><List /></el-icon>
+            <PhList :size="18" />
             <span>Servers</span>
           </router-link>
           <router-link
@@ -33,7 +33,7 @@
             class="nav-item"
             :class="{ active: route.name === 'players' }"
           >
-            <el-icon size="18"><UserFilled /></el-icon>
+            <PhUserFocus :size="18" />
             <span>Players</span>
           </router-link>
         </div>
@@ -45,7 +45,7 @@
             class="nav-item"
             :class="{ active: route.name === 'files' }"
           >
-            <el-icon size="18"><Folder /></el-icon>
+            <PhFolder :size="18" />
             <span>Files</span>
           </router-link>
           <router-link
@@ -53,7 +53,7 @@
             class="nav-item"
             :class="{ active: route.name === 'console' }"
           >
-            <el-icon size="18"><Cpu /></el-icon>
+            <PhCpu :size="18" />
             <span>Console</span>
           </router-link>
           <router-link
@@ -61,7 +61,7 @@
             class="nav-item"
             :class="{ active: route.name === 'backups' }"
           >
-            <el-icon size="18"><Refresh /></el-icon>
+            <PhArrowsClockwise :size="18" />
             <span>Backups</span>
           </router-link>
           <router-link
@@ -69,7 +69,7 @@
             class="nav-item"
             :class="{ active: route.name === 'schedules' }"
           >
-            <el-icon size="18"><Calendar /></el-icon>
+            <PhCalendar :size="18" />
             <span>Schedules</span>
           </router-link>
         </div>
@@ -81,7 +81,7 @@
             class="nav-item"
             :class="{ active: route.name === 'plugins' }"
           >
-            <el-icon size="18"><Connection /></el-icon>
+            <PhPlug :size="18" />
             <span>Plugins</span>
           </router-link>
           <router-link
@@ -89,7 +89,7 @@
             class="nav-item"
             :class="{ active: route.name === 'mods' }"
           >
-            <el-icon size="18"><Puzzle /></el-icon>
+            <PhPuzzlePiece :size="18" />
             <span>Mods</span>
           </router-link>
           <router-link
@@ -97,7 +97,7 @@
             class="nav-item"
             :class="{ active: route.name === 'integrations' }"
           >
-            <el-icon size="18"><Link /></el-icon>
+            <PhLink :size="18" />
             <span>Integrations</span>
           </router-link>
         </div>
@@ -109,7 +109,7 @@
             class="nav-item"
             :class="{ active: route.name === 'audit-logs' }"
           >
-            <el-icon size="18"><DocumentCopy /></el-icon>
+            <PhCopy :size="18" />
             <span>Audit Logs</span>
           </router-link>
           <router-link
@@ -117,7 +117,7 @@
             class="nav-item"
             :class="{ active: route.name === 'backend-logs' }"
           >
-            <el-icon size="18"><Document /></el-icon>
+            <PhFileText :size="18" />
             <span>Backend Logs</span>
           </router-link>
           <router-link
@@ -125,7 +125,7 @@
             class="nav-item"
             :class="{ active: route.name === 'resources' }"
           >
-            <el-icon size="18"><Cpu /></el-icon>
+            <PhCpu :size="18" />
             <span>Resources</span>
           </router-link>
           <router-link
@@ -133,7 +133,7 @@
             class="nav-item"
             :class="{ active: route.name === 'port-monitor' }"
           >
-            <el-icon size="18"><Odometer /></el-icon>
+            <PhGauge :size="18" />
             <span>Port Finder</span>
           </router-link>
 
@@ -142,7 +142,7 @@
             class="nav-item"
             :class="{ active: route.name === 'users' }"
           >
-            <el-icon size="18"><User /></el-icon>
+            <PhUser :size="18" />
             <span>Users</span>
           </router-link>
           <router-link
@@ -150,7 +150,7 @@
             class="nav-item"
             :class="{ active: route.name === 'settings' }"
           >
-            <el-icon size="18"><Setting /></el-icon>
+            <PhGear :size="18" />
             <span>Settings</span>
           </router-link>
         </div>
@@ -158,7 +158,7 @@
 
       <div class="sidebar-footer">
         <button class="nav-item logout" @click="handleLogout">
-          <el-icon size="18"><SwitchButton /></el-icon>
+          <PhSignOut :size="18" />
           <span>Logout</span>
         </button>
       </div>
@@ -175,7 +175,7 @@
         </div>
         <div class="topbar-actions">
           <div class="user-info">
-            <el-icon size="16"><User /></el-icon>
+            <PhUser :size="16" />
             <span>{{ auth.username || "admin" }}</span>
           </div>
         </div>
@@ -198,24 +198,24 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  Grid,
-  List,
-  UserFilled,
-  Folder,
-  Cpu,
-  Refresh,
-  Calendar,
-  Connection,
-  Puzzle,
-  Link,
-  DocumentCopy,
-  Document,
-  Odometer,
-  User,
-  Setting,
-  SwitchButton,
-  Monitor,
-} from "@element-plus/icons-vue";
+  PhMonitor,
+  PhSquaresFour,
+  PhList,
+  PhUserFocus,
+  PhFolder,
+  PhCpu,
+  PhArrowsClockwise,
+  PhCalendar,
+  PhPlug,
+  PhPuzzlePiece,
+  PhLink,
+  PhCopy,
+  PhFileText,
+  PhGauge,
+  PhUser,
+  PhGear,
+  PhSignOut,
+} from "@phosphor-icons/vue";
 import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();

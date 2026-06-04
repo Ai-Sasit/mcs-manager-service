@@ -5,7 +5,8 @@
         <h3>Panel Users</h3>
         <el-tag size="small" type="info">{{ users.length }} user(s)</el-tag>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openCreate"
+      <el-button type="primary" @click="openCreate"
+        ><template #icon><PhPlus /></template
         >Add User</el-button
       >
     </div>
@@ -31,15 +32,15 @@
           <template #default="{ row }">
             <el-button
               size="small"
-              :icon="Edit"
               circle
               @click="openEdit(row)"
+              ><template #icon><PhPencilSimple /></template
             />
             <el-button
               size="small"
-              :icon="Delete"
               type="danger"
               circle
+              ><template #icon><PhTrash /></template
               @click="handleDelete(row)"
               :disabled="row.username === currentUsername"
             />
@@ -89,7 +90,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { Plus, Edit, Delete } from "@element-plus/icons-vue";
+import { PhPlus, PhPencilSimple, PhTrash } from "@phosphor-icons/vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
