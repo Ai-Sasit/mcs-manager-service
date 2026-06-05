@@ -374,7 +374,7 @@ func DownloadBedrockServer(version, dest string) error {
 func DownloadPaperServer(version, dest string) error {
 	logger.Info("[DownloadPaperServer] Fetching builds for version="+version, nil)
 
-	// Get latest build number
+	// Get latest build (v3 API returns a flat array)
 	buildsURL := fmt.Sprintf("https://fill.papermc.io/v3/projects/paper/versions/%s/builds", version)
 	resp, err := http.Get(buildsURL)
 	if err != nil {
@@ -391,37 +391,43 @@ func DownloadPaperServer(version, dest string) error {
 		return err
 	}
 
-	var buildsResp struct {
-		Builds []struct {
-			Build     int `json:"build"`
-			Downloads map[string]struct {
-				Name string `json:"name"`
-			} `json:"downloads"`
-		} `json:"builds"`
+	var buildsResp []struct {
+		ID        int `json:"id"`
+		Downloads map[string]struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"downloads"`
 	}
 	if err := json.Unmarshal(body, &buildsResp); err != nil {
 		return fmt.Errorf("failed to parse Paper builds: %w", err)
 	}
 
-	if len(buildsResp.Builds) == 0 {
+	if len(buildsResp) == 0 {
 		return fmt.Errorf("no Paper builds found for version %s", version)
 	}
 
-	latestBuild := buildsResp.Builds[len(buildsResp.Builds)-1]
-	appDownload, ok := latestBuild.Downloads["application"]
-	if !ok {
-		return fmt.Errorf("no application download in Paper build")
+	latestBuild := buildsResp[len(buildsResp)-1]
+	var jarURL string
+	for _, dl := range latestBuild.Downloads {
+		if dl.URL != "" {
+			jarURL = dl.URL
+			logger.Info(fmt.Sprintf("[DownloadPaperServer] Downloading build %d for version=%s (%s)", latestBuild.ID, version, dl.Name), nil)
+			break
+		}
 	}
-
-	jarURL := fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds/%d/downloads/%s",
-		version, latestBuild.Build, appDownload.Name)
-	logger.Info(fmt.Sprintf("[DownloadPaperServer] Downloading build %d for version=%s", latestBuild.Build, version), nil)
+	if jarURL == "" {
+		return fmt.Errorf("no download URL found in Paper build %d", latestBuild.ID)
+	}
 
 	resp, err = http.Get(jarURL)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Paper download returned status %d", resp.StatusCode)
+	}
 
 	jarData, err := io.ReadAll(resp.Body)
 	if err != nil {
