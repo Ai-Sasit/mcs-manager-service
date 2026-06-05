@@ -10,7 +10,8 @@
       <input
         type="file"
         ref="fileInput"
-        @change="handleFile"
+        multiple
+        @change="handleFiles"
         :accept="edition === 'java' ? '.jar' : '.mcpack,.mcaddon,.zip'"
         style="display: none"
       />
@@ -24,19 +25,48 @@
         </el-button>
       </div>
     </div>
-    <div v-if="uploading" class="upload-status">
-      <PhSpinner :size="16" class="spin" />
-      Uploading...
-    </div>
-    <div v-if="message" class="upload-message" :class="messageType">
-      {{ message }}
+
+    <!-- Upload queue -->
+    <div v-if="queue.length > 0" class="upload-queue">
+      <div
+        v-for="(item, idx) in queue"
+        :key="idx"
+        class="queue-row"
+        :class="item.status"
+      >
+        <div class="queue-info">
+          <span class="queue-name">{{ item.file.name }}</span>
+          <span class="queue-size">{{ formatSize(item.file.size) }}</span>
+        </div>
+        <div class="queue-progress">
+          <div class="progress-bar-track">
+            <div
+              class="progress-bar-fill"
+              :class="item.status"
+              :style="{ width: item.percent + '%' }"
+            ></div>
+          </div>
+          <span class="progress-text">
+            <template v-if="item.status === 'uploading'">
+              {{ item.percent }}%
+            </template>
+            <template v-else-if="item.status === 'done'">
+              <PhCheck :size="14" class="status-icon" />
+            </template>
+            <template v-else-if="item.status === 'error'">
+              <PhX :size="14" class="status-icon" />
+              <span class="error-msg">{{ item.error }}</span>
+            </template>
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { PhUpload, PhSpinner } from "@phosphor-icons/vue";
+import { ref, nextTick } from "vue";
+import { PhUpload, PhCheck, PhX } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
 
@@ -48,42 +78,84 @@ const props = defineProps({
 const emit = defineEmits(["uploaded"]);
 
 const dragging = ref(false);
-const uploading = ref(false);
-const message = ref("");
-const messageType = ref("success");
 const fileInput = ref(null);
+const queue = ref([]);
 
-async function uploadFile(file) {
-  uploading.value = true;
-  message.value = "";
-  try {
-    const fd = new FormData();
-    fd.append("file", file);
-    await apiClient.post(
-      `/servers/${encodeURIComponent(props.serverId)}/plugins`,
-      fd,
-    );
-    message.value = `Uploaded ${file.name}`;
-    messageType.value = "success";
-    emit("uploaded");
-  } catch (e) {
-    message.value = `Failed: ${getApiErrorMessage(e)}`;
-    messageType.value = "error";
-  } finally {
-    uploading.value = false;
-    if (fileInput.value) fileInput.value.value = "";
+function formatSize(bytes) {
+  if (!bytes) return "0 B";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1048576).toFixed(1) + " MB";
+}
+
+function enqueueFiles(files) {
+  const newItems = Array.from(files).map((file) => ({
+    file,
+    percent: 0,
+    status: "pending", // pending | uploading | done | error
+    error: "",
+  }));
+  queue.value.push(...newItems);
+  nextTick(() => processQueue());
+}
+
+let processing = false;
+async function processQueue() {
+  if (processing) return;
+  processing = true;
+
+  while (queue.value.some((q) => q.status === "pending")) {
+    const item = queue.value.find((q) => q.status === "pending");
+    if (!item) break;
+
+    item.status = "uploading";
+    item.percent = 0;
+
+    try {
+      const fd = new FormData();
+      fd.append("file", item.file);
+
+      await apiClient.post(
+        `/servers/${encodeURIComponent(props.serverId)}/plugins`,
+        fd,
+        {
+          onUploadProgress(progressEvent) {
+            if (progressEvent.total) {
+              item.percent = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total,
+              );
+            }
+          },
+        },
+      );
+
+      item.status = "done";
+      item.percent = 100;
+      emit("uploaded");
+    } catch (e) {
+      item.status = "error";
+      item.error = getApiErrorMessage(e);
+    }
+  }
+
+  processing = false;
+
+  // Clear queue if everything is done/failed
+  if (queue.value.every((q) => q.status === "done" || q.status === "error")) {
+    setTimeout(() => {
+      queue.value = [];
+    }, 4000);
   }
 }
 
-function handleFile(e) {
-  const file = e.target.files[0];
-  if (file) uploadFile(file);
+function handleFiles(e) {
+  enqueueFiles(e.target.files);
+  if (fileInput.value) fileInput.value.value = "";
 }
 
 function handleDrop(e) {
   dragging.value = false;
-  const file = e.dataTransfer.files[0];
-  if (file) uploadFile(file);
+  enqueueFiles(e.dataTransfer.files);
 }
 </script>
 
@@ -119,39 +191,96 @@ function handleDrop(e) {
   font-weight: 500;
   font-size: 14px;
 }
-.upload-status {
-  margin-top: 12px;
-  text-align: center;
+
+.upload-queue {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.queue-row {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+.queue-row.error {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.03);
+}
+.queue-row.done {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.03);
+}
+.queue-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.queue-name {
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+.queue-size {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.queue-progress {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 10px;
 }
-.spin {
-  animation: spin 1.2s linear infinite;
+.progress-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-bg-secondary, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  background: var(--color-primary, #10b981);
 }
-.upload-message {
-  margin-top: 10px;
-  padding: 10px 14px;
-  border-radius: var(--radius);
+.progress-bar-fill.error {
+  background: #ef4444;
+}
+.progress-bar-fill.done {
+  background: #22c55e;
+}
+.progress-text {
+  font-size: 12px;
   font-weight: 500;
-  font-size: 13px;
-  text-align: center;
+  color: var(--color-text-muted);
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
 }
-.upload-message.success {
-  background: rgba(34, 197, 94, 0.08);
-  color: #16a34a;
+.status-icon {
+  flex-shrink: 0;
 }
-.upload-message.error {
-  background: rgba(239, 68, 68, 0.08);
-  color: #dc2626;
+.done .status-icon {
+  color: #22c55e;
+}
+.error .status-icon {
+  color: #ef4444;
+}
+.error-msg {
+  color: #ef4444;
+  font-size: 11px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

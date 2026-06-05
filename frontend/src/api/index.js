@@ -76,8 +76,11 @@ class ApiService {
     return this.https.get(`/servers/${encodeURIComponent(id)}/plugins`);
   }
 
-  async uploadPlugin(id, formData) {
-    return this.https.post(`/servers/${encodeURIComponent(id)}/plugins`, formData);
+  async uploadPlugin(id, formData, onProgress) {
+    return this.https.post(`/servers/${encodeURIComponent(id)}/plugins`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: onProgress,
+    });
   }
 
   async deletePlugin(id, name) {

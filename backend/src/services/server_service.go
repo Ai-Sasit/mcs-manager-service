@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -191,8 +192,22 @@ func DeleteServer(state *AppState, id string) error {
 
 	srv, ok := state.RemoveServer(id)
 	if ok {
-		os.RemoveAll(srv.ServerDir)
-		logger.Info("[DeleteServer] Removed dir id="+id, nil)
+		// Retry directory removal in case the process is still releasing file handles
+		var lastErr error
+		for attempt := 0; attempt < 5; attempt++ {
+			if attempt > 0 {
+				time.Sleep(500 * time.Millisecond)
+			}
+			err := os.RemoveAll(srv.ServerDir)
+			if err == nil {
+				logger.Info("[DeleteServer] Removed dir id="+id+" attempt="+fmt.Sprintf("%d", attempt+1), nil)
+				return nil
+			}
+			lastErr = err
+			logger.Warn(fmt.Sprintf("[DeleteServer] Retry %d failed for id=%s: %s", attempt+1, id, err.Error()), nil)
+		}
+		// Log but don't fail — server is already removed from state
+		logger.Error(fmt.Sprintf("[DeleteServer] Failed to remove directory id=%s after retries: %s", id, lastErr.Error()), nil)
 	}
 	return nil
 }

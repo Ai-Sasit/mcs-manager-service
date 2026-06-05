@@ -6,20 +6,6 @@
         <p class="page-subtitle">Manage server plugins and addons.</p>
       </div>
       <div class="header-actions">
-        <el-upload
-          :action="`${baseUrl}/servers/${selectedServerId}/plugins`"
-          :headers="authHeaders"
-          :on-success="handleUploaded"
-          :show-file-list="false"
-          :accept="
-            selectedEdition === 'java' ? '.jar' : '.mcpack,.mcaddon,.zip'
-          "
-        >
-          <el-button type="primary">
-            <template #icon><PhUpload /></template>
-            Upload Plugin
-          </el-button>
-        </el-upload>
         <el-button @click="fetchPlugins" :loading="loading">
           <template #icon><PhArrowsClockwise /></template>
           Refresh
@@ -54,50 +40,59 @@
       <p>Choose a server to manage its plugins.</p>
     </div>
 
-    <div v-else-if="plugins.length === 0" class="placeholder-card card">
-      <div class="placeholder-icon">📦</div>
-      <h3>No Plugins</h3>
-      <p>No plugins installed for this server yet.</p>
-    </div>
+    <template v-else>
+      <div class="card" style="padding: 20px 24px">
+        <PluginUpload
+          :server-id="selectedServerId"
+          :edition="selectedEdition"
+          @uploaded="handleUploaded"
+        />
+      </div>
 
-    <div v-else class="card" style="padding: 24px">
-      <el-table :data="plugins" style="width: 100%">
-        <el-table-column label="Name" min-width="180">
-          <template #default="{ row }">
-            <div class="plugin-info">
-              <PhPlug :size="16" />
-              <span>{{ row.name }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="Size" width="120">
-          <template #default="{ row }">
-            {{ formatSize(row.size) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Action" width="100" align="center">
-          <template #default="{ row }">
-            <el-popconfirm
-              title="Delete this plugin?"
-              @confirm="handleDelete(row.name)"
-            >
-              <template #reference>
-                <el-button type="danger" size="small" plain>
-                  <template #icon><PhTrash /></template>
-                </el-button>
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+      <div v-if="plugins.length === 0" class="placeholder-card card">
+        <div class="placeholder-icon">📦</div>
+        <h3>No Plugins</h3>
+        <p>No plugins installed for this server yet.</p>
+      </div>
+
+      <div v-else class="card" style="padding: 24px">
+        <el-table :data="plugins" style="width: 100%">
+          <el-table-column label="Name" min-width="180">
+            <template #default="{ row }">
+              <div class="plugin-info">
+                <PhPlug :size="16" />
+                <span>{{ row.name }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="Size" width="120">
+            <template #default="{ row }">
+              {{ formatSize(row.size) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="Action" width="100" align="center">
+            <template #default="{ row }">
+              <el-popconfirm
+                title="Delete this plugin?"
+                @confirm="handleDelete(row.name)"
+              >
+                <template #reference>
+                  <el-button type="danger" size="small" plain>
+                    <template #icon><PhTrash /></template>
+                  </el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import {
-  PhUpload,
   PhArrowsClockwise,
   PhTrash,
   PhPlug,
@@ -107,17 +102,12 @@ import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { getToken } from "@/utils/authStorage";
+import PluginUpload from "@/components/servers/PluginUpload.vue";
 
 const store = useServersStore();
 const plugins = ref([]);
 const loading = ref(false);
 const selectedServerId = ref("");
-
-const baseUrl = apiClient.defaults.baseURL || "";
-const authHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken() || ""}`,
-}));
 
 const selectedEdition = computed(() => {
   const s = store.servers.find((s) => s.id === selectedServerId.value);
@@ -146,7 +136,6 @@ function onServerChange() {
 }
 
 function handleUploaded() {
-  ElMessage.success("Plugin uploaded successfully.");
   fetchPlugins();
 }
 
