@@ -375,7 +375,7 @@ func DownloadPaperServer(version, dest string) error {
 	logger.Info("[DownloadPaperServer] Fetching builds for version="+version, nil)
 
 	// Get latest build number
-	buildsURL := fmt.Sprintf("https://api.papermc.io/v3/projects/paper/versions/%s/builds", version)
+	buildsURL := fmt.Sprintf("https://fill.papermc.io/v3/projects/paper/versions/%s/builds", version)
 	resp, err := http.Get(buildsURL)
 	if err != nil {
 		return fmt.Errorf("failed to fetch Paper builds: %w", err)
