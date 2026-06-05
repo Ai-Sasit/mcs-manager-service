@@ -59,54 +59,31 @@ func getProcessNameWindows(pid int) string {
 }
 
 func lookupProcessLinux(port int) (*models.ProcessInfo, error) {
-	// Try ss first
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("ss -lnpt 'sport = :%d'", port))
+	cmd := exec.Command("sudo", "lsof", "-t", fmt.Sprintf("-i:%d", port))
 	out, err := cmd.Output()
-	if err == nil {
-		lines := strings.Split(string(out), "\n")
-		// Output looks like:
-		// LISTEN 0      128    *:25565   *:*   users:(("java",pid=11676,fd=22))
-		for _, line := range lines {
-			if strings.Contains(line, fmt.Sprintf(":%d", port)) && strings.Contains(line, "pid=") {
-				pidStart := strings.Index(line, "pid=") + 4
-				pidEnd := strings.Index(line[pidStart:], ",")
-				if pidEnd == -1 {
-					pidEnd = strings.Index(line[pidStart:], ")")
-				}
-				if pidEnd != -1 {
-					pidStr := line[pidStart : pidStart+pidEnd]
-					pid, _ := strconv.Atoi(pidStr)
-					name := getProcessNameLinux(pid)
-					return &models.ProcessInfo{
-						Pid:      pid,
-						Name:     name,
-						Port:     port,
-						Protocol: "TCP", // ss -t is TCP
-					}, nil
-				}
-			}
-		}
+	if err != nil {
+		return nil, fmt.Errorf("no process found listening on port %d", port)
 	}
 
-	// Fallback to lsof
-	cmd = exec.Command("sh", "-c", fmt.Sprintf("lsof -i :%d -t", port))
-	out, err = cmd.Output()
-	if err == nil {
-		pidStr := strings.TrimSpace(string(out))
-		if pidStr != "" {
-			pids := strings.Split(pidStr, "\n")
-			firstPid, _ := strconv.Atoi(pids[0])
-			name := getProcessNameLinux(firstPid)
-			return &models.ProcessInfo{
-				Pid:      firstPid,
-				Name:     name,
-				Port:     port,
-				Protocol: "LISTEN",
-			}, nil
-		}
+	pidStr := strings.TrimSpace(string(out))
+	if pidStr == "" {
+		return nil, fmt.Errorf("no process found listening on port %d", port)
 	}
 
-	return nil, fmt.Errorf("no process found listening on port %d", port)
+	// Take the first PID if multiple lines are returned
+	pids := strings.Split(pidStr, "\n")
+	firstPid, err := strconv.Atoi(strings.TrimSpace(pids[0]))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse PID for port %d: %w", port, err)
+	}
+
+	name := getProcessNameLinux(firstPid)
+	return &models.ProcessInfo{
+		Pid:      firstPid,
+		Name:     name,
+		Port:     port,
+		Protocol: "TCP",
+	}, nil
 }
 
 func getProcessNameLinux(pid int) string {
@@ -120,7 +97,7 @@ func KillProcessByPid(pid int) error {
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("taskkill", "/F", "/PID", strconv.Itoa(pid))
 	} else {
-		cmd = exec.Command("kill", "-9", strconv.Itoa(pid))
+		cmd = exec.Command("sudo", "kill", "-9", strconv.Itoa(pid))
 	}
 	return cmd.Run()
 }

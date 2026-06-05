@@ -11,7 +11,7 @@
           <div class="meta-row">
             <el-tag
               size="small"
-              :type="server.status === 'running' ? 'success' : 'info'"
+              :type="statusTagType(server.status)"
               effect="light"
               >{{ server.status }}</el-tag
             >
@@ -316,12 +316,14 @@ import {
 import apiClient from "@/api/client";
 import { useServerLogs } from "@/composables/useServerLogs";
 import { useServerTerminal } from "@/composables/useServerTerminal";
+import { useServersStore } from "@/stores/servers";
 import PluginUpload from "@/components/servers/PluginUpload.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const route = useRoute();
 const router = useRouter();
+const store = useServersStore();
 
 const server = ref(null);
 const plugins = ref([]);
@@ -466,13 +468,17 @@ function sendCommand() {
   cmdInput.value = "";
 }
 
+function syncStatusFromStore() {
+  if (!server.value) return;
+  const s = store.servers.find((s) => s.id === server.value.id);
+  if (s) server.value.status = s.status;
+}
+
 async function start() {
   loading.value = true;
   try {
-    await apiClient.post(
-      `/servers/${encodeURIComponent(server.value.id)}/start`,
-    );
-    server.value.status = "running";
+    await store.startServer(server.value.id);
+    syncStatusFromStore();
     ElMessage.success("Server start sequence initiated.");
   } catch (e) {
     ElMessage.error("Failed: " + getApiErrorMessage(e));
@@ -484,10 +490,8 @@ async function start() {
 async function stop() {
   loading.value = true;
   try {
-    await apiClient.post(
-      `/servers/${encodeURIComponent(server.value.id)}/stop`,
-    );
-    server.value.status = "stopped";
+    await store.stopServer(server.value.id);
+    syncStatusFromStore();
     logsComp?.disconnect();
     termComp?.disconnect();
     ElMessage.info("Server stopped.");
@@ -500,14 +504,11 @@ async function stop() {
 
 async function restart() {
   loading.value = true;
-  server.value.status = "starting";
   try {
     logsComp?.disconnect();
     termComp?.disconnect();
-    await apiClient.post(
-      `/servers/${encodeURIComponent(server.value.id)}/restart`,
-    );
-    server.value.status = "running";
+    await store.restartServer(server.value.id);
+    syncStatusFromStore();
     setupLogs();
     setupTerminal();
     ElMessage.success("Server restarted.");
@@ -602,6 +603,12 @@ watch(
     }
   },
 );
+
+function statusTagType(status) {
+  if (status === "running") return "success";
+  if (status === "starting" || status === "stopping") return "warning";
+  return "info";
+}
 
 function formatDate(iso) {
   if (!iso) return "-";
