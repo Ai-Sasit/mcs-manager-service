@@ -209,6 +209,7 @@ import {
   PhX,
 } from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
+import { useServerHealthCheck } from "@/composables/useServerHealthCheck";
 import { ElMessageBox, ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -216,6 +217,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 const store = useServersStore();
 const loading = ref(false);
 const searchPortInput = ref("");
+const healthCheck = useServerHealthCheck();
 const searchLoading = ref(false);
 const searchResult = ref(null);
 const searchError = ref("");
@@ -303,6 +305,7 @@ async function handleKill(server) {
 
 onMounted(() => {
   store.fetchServers();
+  healthCheck.start();
 });
 </script>
 

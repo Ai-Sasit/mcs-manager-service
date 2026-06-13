@@ -108,14 +108,17 @@ import { ElMessage } from "element-plus";
 import { PhPlus, PhArrowsClockwise } from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
+import { useServerHealthCheck } from "@/composables/useServerHealthCheck";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
 const showCreate = ref(false);
 const actionLoading = reactive({});
+const healthCheck = useServerHealthCheck();
 
 onMounted(() => {
   store.fetchServers();
+  healthCheck.start();
 });
 
 function formatStatus(status) {

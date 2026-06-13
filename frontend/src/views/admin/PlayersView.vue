@@ -84,8 +84,25 @@ const form = ref({ username: "", server_id: "" });
 async function fetchPlayers() {
   loading.value = true;
   try {
-    const { data } = await apiClient.get("/players");
-    players.value = data.data || [];
+    if (store.servers.length === 0) await store.fetchServers();
+
+    const results = [];
+    for (const server of store.servers) {
+      try {
+        const { data } = await apiClient.get(
+          `/servers/${encodeURIComponent(server.id)}/players`,
+        );
+        const serverPlayers = (data.data || []).map((p) => ({
+          ...p,
+          server_name: p.server_name || server.name,
+          server_id: server.id,
+        }));
+        results.push(...serverPlayers);
+      } catch {
+        // skip servers that don't respond
+      }
+    }
+    players.value = results;
   } catch (e) {
     ElMessage.error("Failed to load players: " + getApiErrorMessage(e));
   } finally {
@@ -94,8 +111,17 @@ async function fetchPlayers() {
 }
 
 async function handleCreate() {
+  if (!form.value.server_id) {
+    ElMessage.warning("Please select a server.");
+    return;
+  }
   try {
-    await apiClient.post("/players", form.value);
+    await apiClient.post(
+      `/servers/${encodeURIComponent(form.value.server_id)}/players`,
+      {
+        username: form.value.username,
+      },
+    );
     ElMessage.success("Player added.");
     showCreate.value = false;
     form.value = { username: "", server_id: "" };

@@ -237,6 +237,7 @@ import apiClient from "@/api/client";
 import ServerCard from "@/components/servers/ServerCard.vue";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
 import { useSystemResources } from "@/composables/useSystemResources";
+import { useServerHealthCheck } from "@/composables/useServerHealthCheck";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 const store = useServersStore();
@@ -245,6 +246,7 @@ const logs = ref([]);
 const loadingLogs = ref(false);
 const filterEdition = ref("all");
 const resources = useSystemResources();
+const healthCheck = useServerHealthCheck();
 
 const cpuColors = [
   { color: "#10b981", percentage: 20 },
@@ -369,10 +371,12 @@ onMounted(() => {
   store.fetchServers();
   fetchLogs();
   resources.connect();
+  healthCheck.start();
 });
 
 onUnmounted(() => {
   resources.disconnect();
+  healthCheck.stop();
 });
 </script>
 

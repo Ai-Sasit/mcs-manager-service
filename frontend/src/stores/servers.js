@@ -70,6 +70,11 @@ export const useServersStore = defineStore("servers", () => {
     }
   }
 
+  function updateServerStatus(id, status) {
+    const s = servers.value.find((s) => s.id === id);
+    if (s) s.status = status;
+  }
+
   async function restartServer(id) {
     const s = servers.value.find((s) => s.id === id);
     const prevStatus = s?.status;
@@ -95,6 +100,7 @@ export const useServersStore = defineStore("servers", () => {
     deleteServer,
     startServer,
     stopServer,
+    updateServerStatus,
     restartServer,
   };
 });

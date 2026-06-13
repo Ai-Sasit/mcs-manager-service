@@ -53,7 +53,7 @@ const form = ref({
 
 async function loadSettings() {
   try {
-    const { data } = await apiClient.get("/system/settings");
+    const { data } = await apiClient.get("/settings");
     Object.assign(form.value, data.data || {});
   } catch (e) {
     ElMessage.error("Failed to load settings: " + getApiErrorMessage(e));
@@ -63,7 +63,7 @@ async function loadSettings() {
 async function saveSettings() {
   saving.value = true;
   try {
-    await apiClient.put("/system/settings", form.value);
+    await apiClient.put("/settings", form.value);
     ElMessage.success("Settings updated.");
   } catch (e) {
     ElMessage.error(getApiErrorMessage(e));
