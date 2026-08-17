@@ -73,7 +73,6 @@
       </div>
       <el-button
         class="details-btn"
-        round
         @click="$router.push(`/server/${server.id}`)"
       >
         Manage
@@ -200,9 +199,7 @@ function getStatusType(status) {
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
-  background: var(--color-bg);
-  padding: 2px 8px;
-  border-radius: 100px;
+  padding: 2px 0;
 }
 
 .card-stats {
@@ -244,11 +241,5 @@ function getStatusType(status) {
 .details-btn {
   font-weight: 600 !important;
   padding: 0 16px !important;
-}
-
-.details-btn:hover {
-  background: var(--color-primary) !important;
-  color: white !important;
-  border-color: var(--color-primary) !important;
 }
 </style>

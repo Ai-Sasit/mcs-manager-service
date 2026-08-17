@@ -23,7 +23,7 @@
     </div>
 
     <div v-else-if="schedules.length === 0" class="placeholder-card card">
-      <div class="placeholder-icon">📅</div>
+      <div class="placeholder-icon"><PhCalendar :size="48" /></div>
       <h3>No Schedules</h3>
       <p>Create your first schedule to automate server tasks.</p>
     </div>
@@ -92,7 +92,7 @@
   </div>
 
   <div v-else class="placeholder-card card">
-    <div class="placeholder-icon">📅</div>
+    <div class="placeholder-icon"><PhCalendar :size="48" /></div>
     <h2>Task Scheduler</h2>
     <p>Feature is not available.</p>
   </div>
@@ -105,6 +105,7 @@ import {
   PhArrowsClockwise,
   PhTrash,
   PhSpinner,
+  PhCalendar,
 } from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
@@ -249,8 +250,9 @@ onMounted(async () => {
 }
 
 .placeholder-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
 }
 
 .loading-state {

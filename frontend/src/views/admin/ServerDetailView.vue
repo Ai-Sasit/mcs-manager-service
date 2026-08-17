@@ -253,12 +253,14 @@
                   formatSize(row.size)
                 }}</template></el-table-column
               >
-              <el-table-column label="Action" width="80" align="center">
+              <el-table-column label="Actions" width="88" align="center">
                 <template #default="{ row }">
                   <el-button
+                    class="plugin-remove-button"
                     type="danger"
-                    circle
                     size="small"
+                    aria-label="Remove plugin"
+                    title="Remove plugin"
                     @click="removePlugin(row.name)"
                   >
                     <template #icon>
@@ -708,7 +710,8 @@ onUnmounted(() => {
   gap: 12px;
 }
 .log-box {
-  background: var(--color-white);
+  color: #e2e8e5;
+  background: #111815;
   border-radius: var(--radius);
   padding: 20px;
   height: 480px;
@@ -716,32 +719,32 @@ onUnmounted(() => {
   font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.7;
-  border: 1px solid var(--color-border);
+  border: 1px solid #25312d;
 }
 .log-line {
-  color: var(--color-text);
+  color: #e2e8e5;
   margin-bottom: 2px;
 }
 .log-system-info {
-  color: #3b82f6;
+  color: #9bcaff;
   font-weight: 600;
 }
 .log-system-warn {
-  color: #f59e0b;
+  color: #ffd87a;
   font-weight: 600;
 }
 .log-system-error {
-  color: #ef4444;
+  color: #ff99a4;
   font-weight: 600;
 }
 .log-warn {
-  color: #f59e0b;
+  color: #ffd87a;
 }
 .log-error {
-  color: #ef4444;
+  color: #ff99a4;
 }
 .log-empty {
-  color: #6b7280;
+  color: #9aa8a2;
   font-style: italic;
 }
 .cmd-row {
@@ -780,12 +783,26 @@ onUnmounted(() => {
   font-weight: 600;
 }
 .edition-badge.java {
-  background: #fff7ed;
-  color: #ea580c;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 .edition-badge.bedrock {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+.plugin-remove-button {
+  width: 32px;
+  min-height: 32px;
+  padding: 7px !important;
+  color: var(--color-danger) !important;
+  background: var(--color-danger-bg) !important;
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent) !important;
+}
+.plugin-remove-button:hover,
+.plugin-remove-button:focus-visible {
+  color: #ffffff !important;
+  background: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
 }
 .path-code {
   background: var(--color-bg);

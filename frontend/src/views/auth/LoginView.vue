@@ -1,14 +1,24 @@
 <template>
   <div class="login-page">
+    <button
+      class="theme-toggle"
+      type="button"
+      :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+      :title="isDark ? 'Light theme' : 'Dark theme'"
+      @click="toggleTheme"
+    >
+      <PhSun v-if="isDark" :size="19" />
+      <PhMoon v-else :size="19" />
+    </button>
+
     <div class="login-card">
       <div class="login-logo">
         <div class="brand-line">
-          <div class="logo-mark">
-            <PhDesktop :size="22" color="#ffffff" />
-          </div>
+          <span class="logo-mark"><PhDesktop :size="21" weight="bold" /></span>
           <span>MC Manage</span>
         </div>
         <h1>Welcome back</h1>
+        <p>Sign in to manage your Minecraft servers.</p>
       </div>
 
       <el-form
@@ -51,12 +61,12 @@
           :loading="loading"
           @click="handleLogin"
         >
-          Sign In
+          Sign in
         </el-button>
       </el-form>
 
       <div class="login-footer">
-        <span>Secure Access Only</span>
+        <span>Secure access only</span>
         <span>Version 1.0.0</span>
       </div>
     </div>
@@ -67,14 +77,16 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { PhDesktop } from "@phosphor-icons/vue";
+import { PhDesktop, PhMoon, PhSun } from "@phosphor-icons/vue";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { useTheme } from "@/composables/useTheme";
 
 const router = useRouter();
 const auth = useAuthStore();
 const formRef = ref(null);
 const loading = ref(false);
 const error = ref("");
+const { isDark, toggleTheme } = useTheme();
 
 const form = ref({ username: "", password: "" });
 
@@ -106,54 +118,47 @@ async function handleLogin() {
 
 <style scoped>
 .login-page {
-  min-height: 100vh;
-  position: relative;
-  overflow: hidden;
   display: flex;
+  min-height: 100vh;
   align-items: center;
-  justify-content: flex-end;
-  padding: 48px 7vw;
+  justify-content: center;
+  padding: 32px;
   background:
-    linear-gradient(
-      90deg,
-      rgba(244, 252, 248, 0.18),
-      rgba(240, 253, 250, 0.44) 52%,
-      rgba(255, 255, 255, 0.28)
-    ),
+    linear-gradient(120deg, color-mix(in srgb, var(--color-bg) 82%, transparent), color-mix(in srgb, var(--color-primary-bg) 58%, transparent)),
     url("/login-bg-light.webp") center / cover no-repeat,
-    #eaf7ef;
-}
-
-.login-page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      circle at 22% 18%,
-      rgba(255, 255, 255, 0.62),
-      transparent 34%
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.08),
-      rgba(236, 253, 245, 0.28) 56%,
-      rgba(255, 255, 255, 0.62)
-    );
-  pointer-events: none;
+    var(--color-bg);
 }
 
 .login-card {
-  position: relative;
-  z-index: 1;
   width: min(100%, 420px);
-  padding: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.58);
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
-  backdrop-filter: blur(20px) saturate(145%);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  padding: 32px;
+  background: var(--color-layer);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-flyout);
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: var(--color-layer);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-layer-alt);
 }
 
 .login-logo {
@@ -163,43 +168,45 @@ async function handleLogin() {
 .brand-line {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 24px;
   color: var(--color-text);
-  font-size: 17px;
-  font-weight: 800;
-  margin-bottom: 18px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .logo-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius);
-  background: linear-gradient(
-    135deg,
-    var(--color-primary),
-    var(--color-accent)
-  );
   display: inline-flex;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.32);
+  color: #ffffff;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
 }
 
 .login-logo h1 {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--color-text);
   margin: 0;
+  color: var(--color-text);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.login-logo p {
+  margin: 7px 0 0;
+  color: var(--color-text-secondary);
 }
 
 .login-alert {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .login-btn {
   width: 100%;
-  height: 44px;
-  font-weight: 700 !important;
+  min-height: 40px;
+  margin-top: 4px;
 }
 
 .login-footer {
@@ -207,41 +214,34 @@ async function handleLogin() {
   justify-content: space-between;
   gap: 12px;
   margin-top: 24px;
-  font-size: 12px;
-  color: rgba(31, 41, 55, 0.58);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0;
 }
 
 :deep(.el-form-item__label) {
+  color: var(--color-text) !important;
   font-weight: 600;
-  color: rgba(31, 41, 55, 0.82);
-  font-size: 14px;
-  margin-bottom: 4px;
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.88) !important;
-  border-color: rgba(148, 163, 184, 0.42) !important;
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+  min-height: 40px;
 }
 
 @media (max-width: 560px) {
   .login-page {
-    padding: 18px;
-    justify-content: center;
+    padding: 16px;
   }
 
   .login-card {
-    padding: 28px 20px;
+    padding: 24px 20px;
   }
 
-  .login-logo h1 {
-    font-size: 23px;
+  .theme-toggle {
+    top: 12px;
+    right: 12px;
   }
 
   .login-footer {

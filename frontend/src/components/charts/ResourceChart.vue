@@ -22,6 +22,7 @@ import {
   DataZoomComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { useTheme } from "@/composables/useTheme";
 
 // Register ECharts components
 use([
@@ -53,7 +54,7 @@ const props = defineProps({
   },
   color: {
     type: String,
-    default: "#10b981",
+    default: "#00856f",
   },
   showDataZoom: {
     type: Boolean,
@@ -78,24 +79,41 @@ const props = defineProps({
 });
 
 const chartRef = ref(null);
+const { theme } = useTheme();
+
+const palette = computed(() => {
+  // The reactive theme read makes ECharts redraw when the app appearance changes.
+  theme.value;
+  const styles = getComputedStyle(document.documentElement);
+  const color = (name) => styles.getPropertyValue(name).trim();
+  return {
+    layer: color("--color-layer"),
+    text: color("--color-text"),
+    secondaryText: color("--color-text-secondary"),
+    mutedText: color("--color-text-muted"),
+    border: color("--color-border"),
+    borderLight: color("--color-border-light"),
+  };
+});
 
 const chartOption = computed(() => {
   const areaColor = props.areaStyle ? props.color : undefined;
+  const colors = palette.value;
   return {
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(255, 255, 255, 0.98)",
-      borderColor: "#e5e7eb",
+      backgroundColor: colors.layer,
+      borderColor: colors.border,
       borderWidth: 1,
       padding: [8, 12],
       textStyle: {
-        color: "#111827",
+        color: colors.text,
         fontSize: 12,
       },
       axisPointer: {
         type: "line",
         lineStyle: {
-          color: "#9ca3af",
+          color: colors.mutedText,
           width: 1,
           type: "solid",
         },
@@ -115,7 +133,7 @@ const chartOption = computed(() => {
       axisLine: {
         show: true,
         lineStyle: {
-          color: "#e5e7eb",
+          color: colors.borderLight,
           width: 1,
         },
       },
@@ -123,7 +141,7 @@ const chartOption = computed(() => {
         show: false,
       },
       axisLabel: {
-        color: "#6b7280",
+        color: colors.secondaryText,
         fontSize: 11,
         interval: Math.floor(props.timeLabels.length / 8) || 0,
         hideOverlap: true,
@@ -136,7 +154,7 @@ const chartOption = computed(() => {
       axisLine: {
         show: true,
         lineStyle: {
-          color: "#e5e7eb",
+          color: colors.borderLight,
           width: 1,
         },
       },
@@ -144,12 +162,12 @@ const chartOption = computed(() => {
         show: false,
       },
       axisLabel: {
-        color: "#6b7280",
+        color: colors.secondaryText,
         fontSize: 11,
       },
       splitLine: {
         lineStyle: {
-          color: "#e5e7eb",
+          color: colors.borderLight,
           width: 1,
           type: "solid",
         },
@@ -177,7 +195,7 @@ const chartOption = computed(() => {
         itemStyle: {
           color: props.color,
           borderWidth: 2,
-          borderColor: "#111827",
+          borderColor: colors.layer,
         },
         lineStyle: {
           width: 2,
@@ -197,7 +215,7 @@ const chartOption = computed(() => {
 
 // Force chart to re-render on data changes (deep watch on data + labels)
 watch(
-  () => [props.data, props.timeLabels],
+  () => [props.data, props.timeLabels, theme.value],
   () => {
     const chart = chartRef.value?.chart;
     if (chart) {

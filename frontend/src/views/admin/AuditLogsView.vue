@@ -28,13 +28,13 @@
     </div>
 
     <div v-else-if="filteredLogs.length === 0" class="placeholder-card card">
-      <div class="placeholder-icon">📋</div>
+      <div class="placeholder-icon"><PhClipboardText :size="48" /></div>
       <h3>No Audit Logs</h3>
       <p>Activity records will appear here as actions are performed.</p>
     </div>
 
     <div v-else class="card" style="padding: 24px">
-      <el-table :data="filteredLogs" style="width: 100%">
+      <el-table :data="paginatedLogs" style="width: 100%">
         <el-table-column label="User" width="120">
           <template #default="{ row }">
             {{ row.user }}
@@ -53,7 +53,16 @@
         </el-table-column>
         <el-table-column label="Target" min-width="180">
           <template #default="{ row }">
-            {{ row.target }}
+            <div class="target-cell">
+              <span>{{ row.target }}</span>
+              <span
+                v-if="row.details"
+                class="audit-description"
+                :title="row.details"
+              >
+                {{ row.details }}
+              </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="Time" width="200">
@@ -62,16 +71,28 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[25, 50, 100]"
+          :total="filteredLogs.length"
+          layout="total, sizes, prev, pager, next"
+          background
+          @size-change="handlePageSizeChange"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import {
   PhArrowsClockwise,
   PhMagnifyingGlass,
   PhSpinner,
+  PhClipboardText,
 } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -80,6 +101,8 @@ import { ElMessage } from "element-plus";
 const logs = ref([]);
 const loading = ref(false);
 const search = ref("");
+const currentPage = ref(1);
+const pageSize = ref(25);
 
 const filteredLogs = computed(() => {
   if (!search.value) return logs.value;
@@ -88,9 +111,28 @@ const filteredLogs = computed(() => {
     (l) =>
       l.user?.toLowerCase().includes(q) ||
       l.action?.toLowerCase().includes(q) ||
-      l.target?.toLowerCase().includes(q),
+      l.target?.toLowerCase().includes(q) ||
+      l.details?.toLowerCase().includes(q),
   );
 });
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredLogs.value.slice(start, start + pageSize.value);
+});
+
+watch(search, () => {
+  currentPage.value = 1;
+});
+
+watch(filteredLogs, (items) => {
+  const lastPage = Math.max(1, Math.ceil(items.length / pageSize.value));
+  if (currentPage.value > lastPage) currentPage.value = lastPage;
+});
+
+function handlePageSizeChange() {
+  currentPage.value = 1;
+}
 
 function getActionType(action) {
   if (action.includes("CREATE") || action.includes("START")) return "success";
@@ -109,6 +151,7 @@ async function fetchLogs() {
   try {
     const { data } = await apiClient.get("/audit-logs");
     logs.value = data.data || [];
+    currentPage.value = 1;
   } catch (e) {
     ElMessage.error("Failed to load audit logs: " + getApiErrorMessage(e));
   } finally {
@@ -150,8 +193,28 @@ onMounted(fetchLogs);
 }
 
 .placeholder-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
+}
+
+.target-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text);
+}
+
+.audit-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .loading-state {

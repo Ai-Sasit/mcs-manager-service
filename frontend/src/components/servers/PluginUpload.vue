@@ -175,7 +175,7 @@ function handleDrop(e) {
 .dropzone:hover,
 .dropzone.dragging {
   border-color: var(--color-primary);
-  background: rgba(16, 185, 129, 0.03);
+  background: var(--color-primary-bg);
 }
 .dropzone-content {
   display: flex;
@@ -205,12 +205,12 @@ function handleDrop(e) {
   padding: 12px 16px;
 }
 .queue-row.error {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.03);
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent);
+  background: var(--color-danger-bg);
 }
 .queue-row.done {
-  border-color: rgba(34, 197, 94, 0.3);
-  background: rgba(34, 197, 94, 0.03);
+  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+  background: var(--color-success-bg);
 }
 .queue-info {
   display: flex;
@@ -240,7 +240,7 @@ function handleDrop(e) {
 .progress-bar-track {
   flex: 1;
   height: 6px;
-  background: var(--color-bg-secondary, #f1f5f9);
+  background: var(--color-layer-alt);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -248,13 +248,13 @@ function handleDrop(e) {
   height: 100%;
   border-radius: 3px;
   transition: width 0.3s ease;
-  background: var(--color-primary, #10b981);
+  background: var(--color-primary);
 }
 .progress-bar-fill.error {
-  background: #ef4444;
+  background: var(--color-danger);
 }
 .progress-bar-fill.done {
-  background: #22c55e;
+  background: var(--color-success);
 }
 .progress-text {
   font-size: 12px;
@@ -270,13 +270,13 @@ function handleDrop(e) {
   flex-shrink: 0;
 }
 .done .status-icon {
-  color: #22c55e;
+  color: var(--color-success);
 }
 .error .status-icon {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 .error-msg {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 11px;
   max-width: 200px;
   overflow: hidden;

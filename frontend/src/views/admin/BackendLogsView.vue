@@ -170,7 +170,8 @@ onUnmounted(() => {
 }
 
 .log-box {
-  background: #1a1a2e;
+  background: #111815;
+  border: 1px solid #25312d;
   border-radius: 8px;
   padding: 16px;
   height: 500px;
@@ -181,19 +182,19 @@ onUnmounted(() => {
 }
 
 .log-line {
-  color: #e2e8f0;
+  color: #e2e8e5;
 }
 
 .log-warn {
-  color: #f59e0b;
+  color: #ffd87a;
 }
 
 .log-error {
-  color: #ef4444;
+  color: #ff99a4;
 }
 
 .log-empty {
-  color: #6b7280;
+  color: #9aa8a2;
   font-style: italic;
   text-align: center;
   padding-top: 40px;

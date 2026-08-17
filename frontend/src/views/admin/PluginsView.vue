@@ -35,7 +35,7 @@
     </div>
 
     <div v-else-if="!selectedServerId" class="placeholder-card card">
-      <div class="placeholder-icon">🔌</div>
+      <div class="placeholder-icon"><PhPlug :size="48" /></div>
       <h3>Select a Server</h3>
       <p>Choose a server to manage its plugins.</p>
     </div>
@@ -50,7 +50,7 @@
       </div>
 
       <div v-if="plugins.length === 0" class="placeholder-card card">
-        <div class="placeholder-icon">📦</div>
+        <div class="placeholder-icon"><PhPackage :size="48" /></div>
         <h3>No Plugins</h3>
         <p>No plugins installed for this server yet.</p>
       </div>
@@ -70,14 +70,21 @@
               {{ formatSize(row.size) }}
             </template>
           </el-table-column>
-          <el-table-column label="Action" width="100" align="center">
+          <el-table-column label="Actions" width="96" align="center">
             <template #default="{ row }">
               <el-popconfirm
                 title="Delete this plugin?"
                 @confirm="handleDelete(row.name)"
               >
                 <template #reference>
-                  <el-button type="danger" size="small" plain>
+                  <el-button
+                    class="plugin-delete-button"
+                    type="danger"
+                    size="small"
+                    plain
+                    aria-label="Delete plugin"
+                    title="Delete plugin"
+                  >
                     <template #icon><PhTrash /></template>
                   </el-button>
                 </template>
@@ -96,6 +103,7 @@ import {
   PhArrowsClockwise,
   PhTrash,
   PhPlug,
+  PhPackage,
   PhSpinner,
 } from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
@@ -194,14 +202,31 @@ onMounted(() => {
   gap: 8px;
 }
 
+:deep(.plugin-delete-button) {
+  width: 32px;
+  min-height: 32px;
+  padding: 7px !important;
+  color: var(--color-danger) !important;
+  background: var(--color-danger-bg) !important;
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent) !important;
+}
+
+:deep(.plugin-delete-button:hover),
+:deep(.plugin-delete-button:focus-visible) {
+  color: #ffffff !important;
+  background: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
+}
+
 .placeholder-card {
   text-align: center;
   padding: 64px 32px;
 }
 
 .placeholder-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
 }
 
 .loading-state {

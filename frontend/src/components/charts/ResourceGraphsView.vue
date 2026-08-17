@@ -31,7 +31,6 @@
           title="Memory Usage"
           :data="history.memory"
           :time-labels="timeLabels"
-          color="#10b981"
           :max-value="100"
           :show-data-zoom="true"
         />
@@ -153,7 +152,7 @@ const timeRangeLabel = computed(() => {
   gap: 0.5rem;
   align-items: center;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .info-label {
@@ -161,13 +160,13 @@ const timeRangeLabel = computed(() => {
 }
 
 .info-separator {
-  color: #4b5563;
+  color: var(--color-text-secondary);
 }
 
 .no-data {
   text-align: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .no-data p {
@@ -183,20 +182,21 @@ const timeRangeLabel = computed(() => {
 }
 
 .chart-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--color-layer);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 1rem;
   height: 360px;
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-card);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
   overflow: hidden;
 }
 
 .chart-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .chart-header {
@@ -212,7 +212,7 @@ const timeRangeLabel = computed(() => {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
@@ -220,7 +220,7 @@ const timeRangeLabel = computed(() => {
 .chart-unit {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
 }
 

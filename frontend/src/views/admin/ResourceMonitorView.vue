@@ -8,7 +8,6 @@
       <el-tag
         :type="connectionTagType"
         effect="dark"
-        round
         :title="resources.error.value"
       >
         {{ connectionLabel }}
@@ -43,7 +42,7 @@
               :percentage="memoryPercent"
               :show-text="false"
               stroke-width="8"
-              color="#10b981"
+              color="var(--color-primary)"
             />
           </div>
 
@@ -58,7 +57,7 @@
               :percentage="diskPercent"
               :show-text="false"
               stroke-width="8"
-              color="#3b82f6"
+              color="var(--color-info)"
             />
           </div>
         </div>
@@ -164,9 +163,9 @@ const resources = useSystemResources();
 const resourceHistory = useResourceHistory(60); // Keep 60 data points (2 minutes at 2s intervals)
 
 const cpuColors = [
-  { color: "#10b981", percentage: 40 },
-  { color: "#e6a23c", percentage: 70 },
-  { color: "#f56c6c", percentage: 90 },
+  { color: "var(--color-primary)", percentage: 40 },
+  { color: "var(--color-warning)", percentage: 70 },
+  { color: "var(--color-danger)", percentage: 90 },
 ];
 
 // Track resource snapshots in history
@@ -345,7 +344,7 @@ onUnmounted(() => {
 
 .resource-tabs :deep(.el-tabs__header) {
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .resource-tabs :deep(.el-tabs__nav-wrap::after) {
@@ -355,22 +354,22 @@ onUnmounted(() => {
 .resource-tabs :deep(.el-tabs__item) {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   padding: 0 1rem;
   height: 40px;
   line-height: 40px;
 }
 
 .resource-tabs :deep(.el-tabs__item:hover) {
-  color: #9ca3af;
+  color: var(--color-text);
 }
 
 .resource-tabs :deep(.el-tabs__item.is-active) {
-  color: #e5e7eb;
+  color: var(--color-primary);
 }
 
 .resource-tabs :deep(.el-tabs__active-bar) {
   height: 2px;
-  background-color: var(--color-primary, #10b981);
+  background-color: var(--color-primary);
 }
 </style>

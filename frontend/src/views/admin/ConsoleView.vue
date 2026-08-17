@@ -52,7 +52,7 @@
                 :percentage="Math.round((server.memory_mb / 4096) * 100)"
                 :show-text="false"
                 stroke-width="6"
-                color="#10b981"
+                color="var(--color-primary)"
               />
             </div>
           </div>
@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { PhArrowsClockwise, PhCpu } from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 
@@ -135,13 +135,13 @@ onMounted(() => {
 }
 
 .server-avatar.java {
-  background: #fff7ed;
-  color: #ea580c;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .server-avatar.bedrock {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .server-details h4 {
@@ -166,12 +166,12 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 
 .dot.running {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--color-success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-success) 65%, transparent);
 }
 
 .status-label {

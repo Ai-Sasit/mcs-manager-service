@@ -105,7 +105,7 @@
         </div>
 
         <div v-else class="empty-state glass-card">
-          <div class="empty-icon">🎮</div>
+          <div class="empty-icon"><PhGameController :size="48" /></div>
           <h3>No Fleet Members</h3>
           <p>Your fleet is currently empty. Deploy a new instance to begin.</p>
           <br />
@@ -173,7 +173,7 @@
                 :percentage="ramPercentage"
                 :show-text="false"
                 stroke-width="8"
-                color="#10b981"
+                color="var(--color-primary)"
               />
             </div>
             <div class="meter-item">
@@ -231,6 +231,7 @@ import {
   PhDotsThree,
   PhCalendar,
   PhCube,
+  PhGameController,
 } from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import apiClient from "@/api/client";
@@ -249,9 +250,9 @@ const resources = useSystemResources();
 const healthCheck = useServerHealthCheck();
 
 const cpuColors = [
-  { color: "#10b981", percentage: 20 },
-  { color: "#e6a23c", percentage: 40 },
-  { color: "#f56c6c", percentage: 80 },
+  { color: "var(--color-primary)", percentage: 20 },
+  { color: "var(--color-warning)", percentage: 40 },
+  { color: "var(--color-danger)", percentage: 80 },
 ];
 
 function clampPercent(value) {
@@ -445,16 +446,16 @@ onUnmounted(() => {
 }
 
 .stat-icon.green {
-  background: rgba(16, 185, 129, 0.15);
+  background: var(--color-primary-bg);
   color: var(--color-primary);
 }
 .stat-icon.emerald {
-  background: rgba(34, 197, 94, 0.15);
-  color: #16a34a;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 .stat-icon.amber {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .stat-main {
@@ -482,16 +483,16 @@ onUnmounted(() => {
 }
 
 .stat-badge.success {
-  background: rgba(34, 197, 94, 0.15);
-  color: #16a34a;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 .stat-badge.warning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 .stat-badge.danger {
-  background: rgba(245, 108, 108, 0.15);
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .stat-progress-bg {
@@ -508,10 +509,10 @@ onUnmounted(() => {
 }
 
 .stat-progress-bar.success {
-  background: #16a34a;
+  background: var(--color-success);
 }
 .stat-progress-bar.warning {
-  background: #d97706;
+  background: var(--color-warning);
 }
 
 /* ─── Layout ─── */
@@ -693,7 +694,8 @@ onUnmounted(() => {
   padding: 64px 32px;
 }
 .empty-icon {
-  font-size: 48px;
+  display: inline-flex;
+  color: var(--color-primary);
   margin-bottom: 20px;
 }
 .center-state {

@@ -1,62 +1,144 @@
 :root {
-    /* ─── Clean Green Admin Palette ─── */
-    --color-primary: #10b981;
-    --color-primary-light: #34d399;
-    --color-primary-lighter: #6ee7b7;
-    --color-primary-dark: #059669;
-    --color-primary-bg: rgba(16, 185, 129, 0.08);
-    
-    --color-accent: #14b8a6;
-    --color-accent-light: #2dd4bf;
-    
-    --color-bg: #f5f7fa;
-    --color-bg-sidebar: #ffffff;
-    --color-white: #ffffff;
-    --color-text: #1f2937;
-    --color-text-secondary: #6b7280;
-    --color-text-muted: #9ca3af;
-    --color-border: #e5e7eb;
-    --color-border-light: #f3f4f6;
-    
-    --color-success: #22c55e;
-    --color-danger: #ef4444;
-    --color-warning: #f59e0b;
-    --color-info: #3b82f6;
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-sidebar: 2px 0 8px rgba(0, 0, 0, 0.04);
-    
-    --radius: 8px;
-    --radius-sm: 6px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --font-en: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color-scheme: light;
 
-    /* ─── Premium Glass Effects ─── */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-blur: blur(12px);
-    --shadow-premium: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
-    --shadow-float: 0 20px 50px -12px rgba(16, 185, 129, 0.15);
+  /* Fluent-inspired semantic palette — light */
+  --color-primary: #00856f;
+  --color-primary-hover: #006e5c;
+  --color-primary-pressed: #005c4d;
+  --color-primary-text: #00856f;
+  --color-primary-light: #39a993;
+  --color-primary-lighter: #8ed8c9;
+  --color-primary-bg: #d8f3ed;
+  --color-primary-bg-hover: #c5ebe3;
+  --color-primary-rgb: 0, 133, 111;
 
-    /* Element Plus Overrides */
-    --el-color-primary: var(--color-primary);
-    --el-color-primary-light-3: #34d399;
-    --el-color-primary-light-5: #6ee7b7;
-    --el-color-primary-light-7: #a7f3d0;
-    --el-color-primary-light-9: #d1fae5;
-    --el-color-primary-dark-2: #059669;
-    --el-bg-color: var(--color-white);
-    --el-bg-color-page: var(--color-bg);
-    --el-bg-color-overlay: var(--color-white);
-    --el-border-color: var(--color-border);
-    --el-border-color-light: var(--color-border-light);
-    --el-box-shadow: var(--shadow-card);
-    --el-box-shadow-light: var(--shadow-sm);
-    --el-border-radius-base: var(--radius);
-    --el-border-radius-small: var(--radius-sm);
-    --el-font-size-base: 14px;
+  --color-accent: var(--color-primary);
+  --color-accent-light: var(--color-primary-light);
+  --color-bg: #f4f7f5;
+  --color-bg-sidebar: #fbfdfc;
+  --color-white: #ffffff;
+  --color-layer: #ffffff;
+  --color-layer-alt: #eef3f1;
+  --color-layer-hover: #e7eeeb;
+  --color-text: #18211f;
+  --color-text-secondary: #51605b;
+  --color-text-muted: #72807b;
+  --color-border: #d4ded9;
+  --color-border-light: #e6ece9;
+  --color-focus: #00856f;
+
+  --color-success: #107c41;
+  --color-success-bg: #dff3e7;
+  --color-danger: #c42b1c;
+  --color-danger-bg: #fce8e6;
+  --color-warning: #9a6700;
+  --color-warning-bg: #fff4ce;
+  --color-info: #2667a8;
+  --color-info-bg: #e5f0fb;
+
+  --shadow-sm: 0 1px 2px rgba(24, 33, 31, 0.08);
+  --shadow-card: 0 1px 2px rgba(24, 33, 31, 0.08), 0 2px 8px rgba(24, 33, 31, 0.04);
+  --shadow-card-hover: 0 3px 12px rgba(24, 33, 31, 0.1);
+  --shadow-sidebar: 1px 0 0 rgba(24, 33, 31, 0.06);
+  --shadow-flyout: 0 8px 24px rgba(24, 33, 31, 0.14);
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --font-en: "Segoe UI Variable", "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Backwards-compatible semantic aliases used by existing views. */
+  --green: var(--color-success);
+  --green-pale: var(--color-success-bg);
+  --yellow: var(--color-warning);
+  --yellow-pale: var(--color-warning-bg);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --bg-secondary: var(--color-layer);
+  --border: var(--color-border);
+  --accent: var(--color-primary);
+  --accent-pale: var(--color-primary-bg);
+
+  /* Element Plus theme bridge */
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: #39a993;
+  --el-color-primary-light-5: #66bfad;
+  --el-color-primary-light-7: #9bdacc;
+  --el-color-primary-light-8: #bce8df;
+  --el-color-primary-light-9: #d8f3ed;
+  --el-color-primary-dark-2: var(--color-primary-pressed);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
+  --el-color-info: var(--color-info);
+  --el-bg-color: var(--color-layer);
+  --el-bg-color-page: var(--color-bg);
+  --el-bg-color-overlay: var(--color-layer);
+  --el-fill-color: var(--color-layer-alt);
+  --el-fill-color-light: var(--color-layer-alt);
+  --el-fill-color-lighter: var(--color-layer-alt);
+  --el-fill-color-blank: var(--color-layer);
+  --el-text-color-primary: var(--color-text);
+  --el-text-color-regular: var(--color-text-secondary);
+  --el-text-color-secondary: var(--color-text-muted);
+  --el-border-color: var(--color-border);
+  --el-border-color-light: var(--color-border-light);
+  --el-border-color-lighter: var(--color-border-light);
+  --el-border-radius-base: var(--radius);
+  --el-border-radius-small: var(--radius-sm);
+  --el-box-shadow: var(--shadow-flyout);
+  --el-box-shadow-light: var(--shadow-card);
+  --el-font-size-base: 14px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Keep solid controls dark enough for white button text; use the brighter
+     text token for links and selected labels against the dark Mica surface. */
+  --color-primary: #00856f;
+  --color-primary-hover: #006e5c;
+  --color-primary-pressed: #005c4d;
+  --color-primary-text: #65cfbb;
+  --color-primary-light: #65cfbb;
+  --color-primary-lighter: #9ee0d2;
+  --color-primary-bg: #163f37;
+  --color-primary-bg-hover: #1b5045;
+  --color-primary-rgb: 32, 168, 142;
+
+  --color-bg: #1c2220;
+  --color-bg-sidebar: #202724;
+  --color-white: #252d2a;
+  --color-layer: #252d2a;
+  --color-layer-alt: #2d3733;
+  --color-layer-hover: #35423d;
+  --color-text: #f1f5f2;
+  --color-text-secondary: #c7d2cd;
+  --color-text-muted: #9aa8a2;
+  --color-border: #46534d;
+  --color-border-light: #38443f;
+  --color-focus: #65cfbb;
+
+  --color-success: #71d99b;
+  --color-success-bg: #1c4930;
+  --color-danger: #ff99a4;
+  --color-danger-bg: #542a31;
+  --color-warning: #ffd87a;
+  --color-warning-bg: #574617;
+  --color-info: #9bcaff;
+  --color-info-bg: #263f5b;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 3px 10px rgba(0, 0, 0, 0.16);
+  --shadow-card-hover: 0 6px 18px rgba(0, 0, 0, 0.24);
+  --shadow-sidebar: 1px 0 0 rgba(255, 255, 255, 0.08);
+  --shadow-flyout: 0 12px 32px rgba(0, 0, 0, 0.42);
+
+  --el-color-primary-light-3: #65cfbb;
+  --el-color-primary-light-5: #4fc3ac;
+  --el-color-primary-light-7: #286e60;
+  --el-color-primary-light-8: #205648;
+  --el-color-primary-light-9: #163f37;
 }

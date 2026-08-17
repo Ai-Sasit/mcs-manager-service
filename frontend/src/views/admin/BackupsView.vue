@@ -57,13 +57,13 @@
     </div>
 
     <div v-else-if="!selectedServerId" class="placeholder-card card">
-      <div class="placeholder-icon">💾</div>
+      <div class="placeholder-icon"><PhFloppyDisk :size="48" /></div>
       <h3>Select a Server</h3>
       <p>Choose a server to view its backups.</p>
     </div>
 
     <div v-else-if="backups.length === 0" class="placeholder-card card">
-      <div class="placeholder-icon">💾</div>
+      <div class="placeholder-icon"><PhFloppyDisk :size="48" /></div>
       <h3>No Backups</h3>
       <p>Create your first backup to protect your server data.</p>
     </div>
@@ -107,6 +107,7 @@ import {
   PhArrowsClockwise,
   PhTrash,
   PhSpinner,
+  PhFloppyDisk,
 } from "@phosphor-icons/vue";
 import { ElMessage, ElNotification } from "element-plus";
 import apiClient from "@/api/client";
@@ -218,8 +219,9 @@ onMounted(() => {
 }
 
 .placeholder-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
 }
 
 .loading-state {

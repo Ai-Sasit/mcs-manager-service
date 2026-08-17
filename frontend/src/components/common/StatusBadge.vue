@@ -25,8 +25,9 @@ const displayText = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 12px;
-  border-radius: 20px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -41,6 +42,7 @@ const displayText = computed(() => {
 .running {
   background: var(--green-pale);
   color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 28%, transparent);
 }
 
 .running .dot {
@@ -49,8 +51,9 @@ const displayText = computed(() => {
 }
 
 .stopped {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-layer-alt);
   color: var(--text-muted);
+  border-color: var(--color-border);
 }
 
 .stopped .dot {
@@ -60,6 +63,7 @@ const displayText = computed(() => {
 .starting {
   background: var(--yellow-pale);
   color: var(--yellow);
+  border-color: color-mix(in srgb, var(--yellow) 30%, transparent);
 }
 
 .starting .dot {

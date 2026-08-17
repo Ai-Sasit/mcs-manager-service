@@ -1,193 +1,100 @@
 <template>
   <div class="admin-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar">
+    <div
+      class="nav-scrim"
+      :class="{ visible: drawerOpen }"
+      aria-hidden="true"
+      @click="closeDrawer"
+    />
+
+    <aside
+      id="primary-navigation"
+      class="sidebar"
+      :class="{ 'is-open': drawerOpen }"
+      aria-label="Primary navigation"
+    >
       <div class="sidebar-header">
-        <div class="logo-mark">
-          <PhMonitor :size="20" color="#ffffff" />
-        </div>
-        <span class="logo-text">MC Manage</span>
+        <router-link to="/" class="brand" @click="closeDrawer">
+          <span class="logo-mark"><PhMonitor :size="20" weight="bold" /></span>
+          <span class="logo-text">MC Manage</span>
+        </router-link>
+        <button
+          class="app-icon-button close-nav"
+          type="button"
+          aria-label="Close navigation"
+          @click="closeDrawer"
+        >
+          <PhX :size="20" />
+        </button>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-group">
-          <div class="nav-group-label">Management</div>
+        <section v-for="group in navigation" :key="group.label" class="nav-group">
+          <h2 class="nav-group-label">{{ group.label }}</h2>
           <router-link
-            to="/"
+            v-for="item in group.items"
+            :key="item.route"
+            :to="item.to"
             class="nav-item"
-            :class="{ active: route.name === 'dashboard' }"
+            :class="{ active: route.name === item.route }"
+            @click="closeDrawer"
           >
-            <PhSquaresFour :size="18" />
-            <span>Dashboard</span>
+            <component :is="item.icon" :size="19" />
+            <span>{{ item.label }}</span>
           </router-link>
-          <router-link
-            to="/servers"
-            class="nav-item"
-            :class="{ active: route.name === 'servers' }"
-          >
-            <PhList :size="18" />
-            <span>Servers</span>
-          </router-link>
-          <router-link
-            to="/players"
-            class="nav-item"
-            :class="{ active: route.name === 'players' }"
-          >
-            <PhUserFocus :size="18" />
-            <span>Players</span>
-          </router-link>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-group-label">Operations</div>
-          <router-link
-            to="/files"
-            class="nav-item"
-            :class="{ active: route.name === 'files' }"
-          >
-            <PhFolder :size="18" />
-            <span>Files</span>
-          </router-link>
-          <router-link
-            to="/console"
-            class="nav-item"
-            :class="{ active: route.name === 'console' }"
-          >
-            <PhCpu :size="18" />
-            <span>Console</span>
-          </router-link>
-          <router-link
-            to="/backups"
-            class="nav-item"
-            :class="{ active: route.name === 'backups' }"
-          >
-            <PhArrowsClockwise :size="18" />
-            <span>Backups</span>
-          </router-link>
-          <router-link
-            to="/schedules"
-            class="nav-item"
-            :class="{ active: route.name === 'schedules' }"
-          >
-            <PhCalendar :size="18" />
-            <span>Schedules</span>
-          </router-link>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-group-label">Extensions</div>
-          <router-link
-            to="/plugins"
-            class="nav-item"
-            :class="{ active: route.name === 'plugins' }"
-          >
-            <PhPlug :size="18" />
-            <span>Plugins</span>
-          </router-link>
-          <router-link
-            to="/mods"
-            class="nav-item"
-            :class="{ active: route.name === 'mods' }"
-          >
-            <PhPuzzlePiece :size="18" />
-            <span>Mods</span>
-          </router-link>
-          <router-link
-            to="/integrations"
-            class="nav-item"
-            :class="{ active: route.name === 'integrations' }"
-          >
-            <PhLink :size="18" />
-            <span>Integrations</span>
-          </router-link>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-group-label">System</div>
-          <router-link
-            to="/audit-logs"
-            class="nav-item"
-            :class="{ active: route.name === 'audit-logs' }"
-          >
-            <PhCopy :size="18" />
-            <span>Audit Logs</span>
-          </router-link>
-          <router-link
-            to="/backend-logs"
-            class="nav-item"
-            :class="{ active: route.name === 'backend-logs' }"
-          >
-            <PhFileText :size="18" />
-            <span>Backend Logs</span>
-          </router-link>
-          <router-link
-            to="/resources"
-            class="nav-item"
-            :class="{ active: route.name === 'resources' }"
-          >
-            <PhCpu :size="18" />
-            <span>Resources</span>
-          </router-link>
-          <router-link
-            to="/port-monitor"
-            class="nav-item"
-            :class="{ active: route.name === 'port-monitor' }"
-          >
-            <PhGauge :size="18" />
-            <span>Port Finder</span>
-          </router-link>
-
-          <router-link
-            to="/users"
-            class="nav-item"
-            :class="{ active: route.name === 'users' }"
-          >
-            <PhUser :size="18" />
-            <span>Users</span>
-          </router-link>
-          <router-link
-            to="/settings"
-            class="nav-item"
-            :class="{ active: route.name === 'settings' }"
-          >
-            <PhGear :size="18" />
-            <span>Settings</span>
-          </router-link>
-        </div>
+        </section>
       </nav>
 
       <div class="sidebar-footer">
-        <button class="nav-item logout" @click="handleLogout">
-          <PhSignOut :size="18" />
-          <span>Logout</span>
+        <button class="nav-item logout" type="button" @click="handleLogout">
+          <PhSignOut :size="19" />
+          <span>Sign out</span>
         </button>
       </div>
     </aside>
 
-    <!-- Main Area -->
     <div class="main-area">
-      <!-- Top Bar -->
       <header class="topbar">
-        <div class="breadcrumb">
-          <span class="crumb-home">Home</span>
-          <span class="crumb-sep">/</span>
-          <span class="crumb-current">{{ pageTitle }}</span>
+        <div class="topbar-start">
+          <button
+            class="app-icon-button menu-button"
+            type="button"
+            :aria-expanded="drawerOpen"
+            aria-controls="primary-navigation"
+            aria-label="Open navigation"
+            @click="drawerOpen = true"
+          >
+            <PhList :size="21" />
+          </button>
+          <div class="breadcrumb" aria-label="Breadcrumb">
+            <span class="crumb-home">MC Manage</span>
+            <PhCaretRight :size="13" class="crumb-sep" />
+            <span class="crumb-current">{{ pageTitle }}</span>
+          </div>
         </div>
+
         <div class="topbar-actions">
-          <div class="user-info">
-            <PhUser :size="16" />
+          <button
+            class="app-icon-button"
+            type="button"
+            :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+            :title="isDark ? 'Light theme' : 'Dark theme'"
+            @click="toggleTheme"
+          >
+            <PhSun v-if="isDark" :size="19" />
+            <PhMoon v-else :size="19" />
+          </button>
+          <div class="user-info" :title="auth.username || 'admin'">
+            <span class="user-avatar"><PhUser :size="16" /></span>
             <span>{{ auth.username || "admin" }}</span>
           </div>
         </div>
       </header>
 
-      <!-- Page Title -->
-      <div class="page-title-bar">
-        <h1>{{ pageTitle }}</h1>
-      </div>
-
-      <!-- Content -->
       <main class="main-content">
+        <div class="page-title-bar">
+          <h1>{{ pageTitle }}</h1>
+        </div>
         <slot />
       </main>
     </div>
@@ -195,37 +102,83 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  PhMonitor,
-  PhSquaresFour,
-  PhList,
-  PhUserFocus,
-  PhFolder,
-  PhCpu,
   PhArrowsClockwise,
   PhCalendar,
+  PhCaretRight,
+  PhCopy,
+  PhCpu,
+  PhFileText,
+  PhFolder,
+  PhGauge,
+  PhGear,
+  PhLink,
+  PhList,
+  PhMonitor,
+  PhMoon,
   PhPlug,
   PhPuzzlePiece,
-  PhLink,
-  PhCopy,
-  PhFileText,
-  PhGauge,
-  PhUser,
-  PhGear,
   PhSignOut,
+  PhSquaresFour,
+  PhSun,
+  PhUser,
+  PhUserFocus,
+  PhX,
 } from "@phosphor-icons/vue";
 import { useAuthStore } from "@/stores/auth";
+import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const drawerOpen = ref(false);
+const { isDark, toggleTheme } = useTheme();
+
+const navigation = [
+  {
+    label: "Management",
+    items: [
+      { label: "Dashboard", route: "dashboard", to: "/", icon: PhSquaresFour },
+      { label: "Servers", route: "servers", to: "/servers", icon: PhList },
+      { label: "Players", route: "players", to: "/players", icon: PhUserFocus },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "Files", route: "files", to: "/files", icon: PhFolder },
+      { label: "Console", route: "console", to: "/console", icon: PhCpu },
+      { label: "Backups", route: "backups", to: "/backups", icon: PhArrowsClockwise },
+      { label: "Schedules", route: "schedules", to: "/schedules", icon: PhCalendar },
+    ],
+  },
+  {
+    label: "Extensions",
+    items: [
+      { label: "Plugins", route: "plugins", to: "/plugins", icon: PhPlug },
+      { label: "Mods", route: "mods", to: "/mods", icon: PhPuzzlePiece },
+      { label: "Integrations", route: "integrations", to: "/integrations", icon: PhLink },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { label: "Audit logs", route: "audit-logs", to: "/audit-logs", icon: PhCopy },
+      { label: "Backend logs", route: "backend-logs", to: "/backend-logs", icon: PhFileText },
+      { label: "Resources", route: "resources", to: "/resources", icon: PhCpu },
+      { label: "Port finder", route: "port-monitor", to: "/port-monitor", icon: PhGauge },
+      { label: "Users", route: "users", to: "/users", icon: PhUser },
+      { label: "Settings", route: "settings", to: "/settings", icon: PhGear },
+    ],
+  },
+];
 
 const pageTitle = computed(() => {
   const names = {
     dashboard: "Dashboard",
-    "server-detail": "Server Detail",
+    "server-detail": "Server detail",
     servers: "Servers",
     players: "Players",
     files: "Files",
@@ -235,78 +188,98 @@ const pageTitle = computed(() => {
     plugins: "Plugins",
     mods: "Mods",
     integrations: "Integrations",
-    "audit-logs": "Audit Logs",
-    "backend-logs": "Backend Logs",
+    "audit-logs": "Audit logs",
+    "backend-logs": "Backend logs",
     resources: "Resources",
-    "port-monitor": "Port Monitor",
+    "port-monitor": "Port finder",
     users: "Users",
     settings: "Settings",
   };
   return names[route.name] || "MC Manage";
 });
 
+function closeDrawer() {
+  drawerOpen.value = false;
+}
+
+function handleEscape(event) {
+  if (event.key === "Escape") closeDrawer();
+}
+
 function handleLogout() {
   auth.logout();
   router.push("/login");
 }
+
+watch(() => route.fullPath, closeDrawer);
+onMounted(() => document.addEventListener("keydown", handleEscape));
+onUnmounted(() => document.removeEventListener("keydown", handleEscape));
 </script>
 
 <style scoped>
 .admin-layout {
-  display: flex;
   min-height: 100vh;
-  background: var(--color-bg);
+  color: var(--color-text);
 }
 
-/* ─── Sidebar ─── */
 .sidebar {
-  width: 240px;
-  min-width: 240px;
-  background: var(--color-white);
-  border-right: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 100;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  display: flex;
+  width: 272px;
+  min-width: 272px;
+  flex-direction: column;
+  background: var(--color-bg-sidebar);
+  border-right: 1px solid var(--color-border);
   box-shadow: var(--shadow-sidebar);
 }
 
 .sidebar-header {
   display: flex;
+  min-height: 56px;
   align-items: center;
-  gap: 12px;
-  padding: 20px 20px;
-  border-bottom: 1px solid var(--color-border);
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text);
+}
+
+.logo-mark,
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .logo-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  color: #ffffff;
   background: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  border-radius: var(--radius-sm);
 }
 
 .logo-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .sidebar-nav {
-  flex: 1;
-  padding: 12px;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   overflow-y: auto;
+  padding: 20px 12px;
 }
 
 .nav-group {
@@ -316,121 +289,253 @@ function handleLogout() {
 }
 
 .nav-group-label {
-  padding: 0 12px 8px;
-  font-size: 11px;
-  font-weight: 700;
+  margin: 0;
+  padding: 0 12px 6px;
   color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0;
 }
 
 .nav-item {
+  position: relative;
   display: flex;
+  min-height: 40px;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius);
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
   color: var(--color-text-secondary);
+  font: inherit;
   font-size: 14px;
   font-weight: 500;
+  text-align: left;
   text-decoration: none;
   cursor: pointer;
-  border: none;
   background: transparent;
-  width: 100%;
-  font-family: inherit;
-  transition: all 0.15s ease;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .nav-item:hover {
-  background: var(--color-bg);
   color: var(--color-text);
+  background: var(--color-layer-alt);
 }
 
 .nav-item.active {
+  color: var(--color-text);
   background: var(--color-primary-bg);
-  color: var(--color-primary);
   font-weight: 600;
+}
+
+.nav-item.active::before {
+  position: absolute;
+  left: -12px;
+  width: 3px;
+  height: 24px;
+  content: "";
+  background: var(--color-primary);
+  border-radius: 0 2px 2px 0;
 }
 
 .sidebar-footer {
   padding: 12px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-light);
 }
 
-.nav-item.logout:hover {
-  background: rgba(239, 68, 68, 0.06);
+.logout:hover {
   color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
-/* ─── Main Area ─── */
 .main-area {
-  flex: 1;
-  margin-left: 240px;
   display: flex;
-  flex-direction: column;
+  min-width: 0;
   min-height: 100vh;
+  flex-direction: column;
+  margin-left: 272px;
 }
 
 .topbar {
-  height: 48px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
+  min-height: 56px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
-  background: var(--color-white);
-  border-bottom: 1px solid var(--color-border);
+  padding: 0 24px;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  border-bottom: 1px solid var(--color-border-light);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+
+.topbar-start,
+.topbar-actions,
+.breadcrumb,
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.topbar-start {
+  min-width: 0;
+  gap: 12px;
+}
+
+.topbar-actions {
+  gap: 10px;
 }
 
 .breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  min-width: 0;
+  gap: 7px;
   font-size: 13px;
 }
 
-.crumb-home {
-  color: var(--color-text-muted);
-}
-
+.crumb-home,
 .crumb-sep {
+  flex: 0 0 auto;
   color: var(--color-text-muted);
 }
 
 .crumb-current {
+  overflow: hidden;
   color: var(--color-text);
-  font-weight: 500;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.topbar-actions {
-  display: flex;
+.app-icon-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.app-icon-button:hover {
+  color: var(--color-text);
+  background: var(--color-layer-alt);
+  border-color: var(--color-border-light);
+}
+
+.menu-button,
+.close-nav {
+  display: none;
 }
 
 .user-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  max-width: 180px;
+  overflow: hidden;
   color: var(--color-text-secondary);
+  font-size: 13px;
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.page-title-bar {
-  padding: 24px 28px 0;
-}
-
-.page-title-bar h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  border-radius: 50%;
 }
 
 .main-content {
   flex: 1;
-  padding: 20px 28px 28px;
-  animation: fadeIn 0.3s ease-out;
+  padding: 0 28px 32px;
+}
+
+.page-title-bar {
+  padding: 24px 0 20px;
+}
+
+.page-title-bar h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .sidebar {
+    box-shadow: var(--shadow-flyout);
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    margin-left: 0;
+  }
+
+  .menu-button,
+  .close-nav {
+    display: inline-flex;
+  }
+
+  .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: block;
+    pointer-events: none;
+    background: rgba(11, 18, 15, 0.36);
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+
+  .nav-scrim.visible {
+    pointer-events: auto;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .main-content {
+    padding: 0 16px 24px;
+  }
+
+  .page-title-bar {
+    padding: 18px 0 16px;
+  }
+
+  .page-title-bar h1 {
+    font-size: 24px;
+  }
+
+  .crumb-home,
+  .crumb-sep {
+    display: none;
+  }
+
+  .user-info > span:last-child {
+    display: none;
+  }
 }
 </style>

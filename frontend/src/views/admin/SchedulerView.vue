@@ -1,13 +1,17 @@
 <template>
   <div class="page-placeholder">
     <div class="placeholder-card card">
-      <div class="placeholder-icon">📅</div>
+      <div class="placeholder-icon"><PhCalendar :size="48" /></div>
       <h2>Task Scheduler</h2>
       <p>Set up automated server restarts, messages, and maintenance windows.</p>
       <el-tag type="info" effect="plain">Coming Soon</el-tag>
     </div>
   </div>
 </template>
+
+<script setup>
+import { PhCalendar } from "@phosphor-icons/vue";
+</script>
 
 <style scoped>
 .page-placeholder {
@@ -18,8 +22,9 @@
   padding: 80px 40px;
 }
 .placeholder-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
 }
 .placeholder-card h2 {
   font-size: 20px;

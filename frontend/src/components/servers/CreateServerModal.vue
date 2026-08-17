@@ -20,7 +20,7 @@
                   :class="{ active: form.edition === 'java' }"
                   @click="setEdition('java')"
                 >
-                  ☕ <span>Java</span>
+                  <PhCoffee :size="18" /> <span>Java</span>
                 </button>
                 <button
                   type="button"
@@ -28,7 +28,7 @@
                   :class="{ active: form.edition === 'bedrock' }"
                   @click="setEdition('bedrock')"
                 >
-                  💎 <span>Bedrock</span>
+                  <PhCube :size="18" /> <span>Bedrock</span>
                 </button>
               </div>
             </div>
@@ -42,7 +42,7 @@
                   :class="{ active: form.server_type === 'vanilla' }"
                   @click="setServerType('vanilla')"
                 >
-                  🟢 <span>Vanilla</span>
+                  <PhCircle :size="16" weight="fill" /> <span>Vanilla</span>
                 </button>
                 <button
                   type="button"
@@ -50,7 +50,7 @@
                   :class="{ active: form.server_type === 'paper' }"
                   @click="setServerType('paper')"
                 >
-                  📄 <span>Paper</span>
+                  <PhFileText :size="18" /> <span>Paper</span>
                 </button>
                 <button
                   type="button"
@@ -58,7 +58,7 @@
                   :class="{ active: form.server_type === 'spigot' }"
                   @click="setServerType('spigot')"
                 >
-                  🔧 <span>Spigot</span>
+                  <PhWrench :size="18" /> <span>Spigot</span>
                 </button>
                 <button
                   type="button"
@@ -66,7 +66,7 @@
                   :class="{ active: form.server_type === 'forge' }"
                   @click="setServerType('forge')"
                 >
-                  ⚒️ <span>Forge</span>
+                  <PhHammer :size="18" /> <span>Forge</span>
                 </button>
                 <button
                   type="button"
@@ -74,7 +74,7 @@
                   :class="{ active: form.server_type === 'fabric' }"
                   @click="setServerType('fabric')"
                 >
-                  🧵 <span>Fabric</span>
+                  <PhYarn :size="18" /> <span>Fabric</span>
                 </button>
               </div>
               <p class="type-hint" v-if="form.server_type === 'paper'">
@@ -214,7 +214,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import { PhX } from "@phosphor-icons/vue";
+import {
+  PhCircle,
+  PhCoffee,
+  PhCube,
+  PhFileText,
+  PhHammer,
+  PhWrench,
+  PhX,
+  PhYarn,
+} from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
 import { useServerSetupStream } from "@/composables/useServerSetupStream";
 import {
@@ -461,7 +470,7 @@ label {
 }
 .edition-btn.active {
   border-color: var(--color-primary);
-  background: rgba(16, 185, 129, 0.04);
+  background: var(--color-primary-bg);
   color: var(--color-primary);
 }
 .type-hint {

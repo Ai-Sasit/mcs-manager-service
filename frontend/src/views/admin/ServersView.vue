@@ -25,53 +25,70 @@
         v-loading="store.loading"
         style="width: 100%"
       >
-        <el-table-column prop="name" label="Server Name" min-width="150" />
-        <el-table-column prop="edition" label="Edition" width="120">
+        <el-table-column label="Server" min-width="240">
           <template #default="{ row }">
-            <el-tag
-              :type="row.edition === 'java' ? 'primary' : 'success'"
-              effect="light"
-            >
-              {{ row.edition.toUpperCase() }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="version" label="Version" width="100" />
-        <el-table-column prop="port" label="Port" width="100" />
-        <el-table-column label="Status" width="120">
-          <template #default="{ row }">
-            <div class="status-indicator" :class="row.status">
-              <span class="dot"></span>
-              {{ formatStatus(row.status) }}
+            <div class="server-identity">
+              <span class="server-avatar" :class="row.edition">
+                <PhCoffee v-if="row.edition === 'java'" :size="19" />
+                <PhCube v-else :size="19" />
+              </span>
+              <span class="server-name-cell">
+                <strong>{{ row.name }}</strong>
+                <small>{{ row.id }}</small>
+              </span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="260" fixed="right">
+        <el-table-column label="Edition" width="130">
           <template #default="{ row }">
-            <el-button-group>
+            <span class="edition-label" :class="row.edition">
+              {{ row.edition === "java" ? "Java Edition" : "Bedrock Edition" }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="Version" width="120">
+          <template #default="{ row }">v{{ row.version }}</template>
+        </el-table-column>
+        <el-table-column label="Port" width="110">
+          <template #default="{ row }"><code class="port-value">:{{ row.port }}</code></template>
+        </el-table-column>
+        <el-table-column label="Status" width="120">
+          <template #default="{ row }">
+            <StatusBadge :status="row.status" />
+          </template>
+        </el-table-column>
+        <el-table-column label="Actions" width="286" fixed="right">
+          <template #default="{ row }">
+            <div class="row-actions">
               <el-button
                 v-if="row.status === 'stopped'"
-                type="success"
+                class="server-command"
+                type="primary"
                 size="small"
                 @click="handleStart(row.id)"
                 :loading="actionLoading[row.id] === 'start'"
               >
+                <template #icon><PhPlay /></template>
                 Start
               </el-button>
               <el-button
                 v-else
+                class="server-command"
                 type="danger"
                 size="small"
                 @click="handleStop(row.id)"
                 :loading="actionLoading[row.id] === 'stop'"
               >
+                <template #icon><PhStop /></template>
                 Stop
               </el-button>
               <el-button
+                class="server-manage-button"
                 size="small"
                 @click="$router.push(`/server/${row.id}`)"
               >
-                Details
+                Manage
+                <template #icon><PhArrowRight /></template>
               </el-button>
               <el-popconfirm
                 title="Are you sure to delete this server?"
@@ -79,16 +96,19 @@
               >
                 <template #reference>
                   <el-button
+                    class="server-delete-button"
                     type="danger"
                     plain
                     size="small"
+                    aria-label="Delete server"
+                    title="Delete server"
                     :loading="actionLoading[row.id] === 'delete'"
                   >
-                    Delete
+                    <template #icon><PhTrash /></template>
                   </el-button>
                 </template>
               </el-popconfirm>
-            </el-button-group>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -105,9 +125,19 @@
 <script setup>
 import { ref, onMounted, reactive } from "vue";
 import { ElMessage } from "element-plus";
-import { PhPlus, PhArrowsClockwise } from "@phosphor-icons/vue";
+import {
+  PhArrowRight,
+  PhArrowsClockwise,
+  PhCoffee,
+  PhCube,
+  PhPlay,
+  PhPlus,
+  PhStop,
+  PhTrash,
+} from "@phosphor-icons/vue";
 import { useServersStore } from "@/stores/servers";
 import CreateServerModal from "@/components/servers/CreateServerModal.vue";
+import StatusBadge from "@/components/common/StatusBadge.vue";
 import { useServerHealthCheck } from "@/composables/useServerHealthCheck";
 import { getApiErrorMessage } from "@/utils/apiError";
 
@@ -120,11 +150,6 @@ onMounted(() => {
   store.fetchServers();
   healthCheck.start();
 });
-
-function formatStatus(status) {
-  if (!status) return "Unknown";
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 async function handleStart(id) {
   actionLoading[id] = "start";
@@ -199,42 +224,119 @@ function handleCreated() {
   overflow: hidden;
 }
 
-.status-indicator {
+:deep(.servers-card .el-table) {
+  border: 0 !important;
+  border-radius: 0;
+}
+
+:deep(.servers-card .el-table__inner-wrapper::before) {
+  display: none;
+}
+
+.server-identity,
+.row-actions {
   display: flex;
   align-items: center;
+}
+
+.server-identity {
+  gap: 12px;
+  min-width: 0;
+}
+
+.server-avatar {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.server-avatar.java {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.server-avatar.bedrock {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.server-name-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.server-name-cell strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-name-cell small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edition-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edition-label.java {
+  color: var(--color-warning);
+}
+
+.edition-label.bedrock {
+  color: var(--color-info);
+}
+
+.port-value {
+  padding: 3px 6px;
+  color: var(--color-text-secondary);
+  background: var(--color-layer-alt);
+  border-radius: var(--radius-sm);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.row-actions {
+  justify-content: flex-end;
   gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
 }
 
-.status-indicator .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
+.server-command {
+  min-width: 72px;
 }
 
-.status-indicator.running .dot {
-  background: var(--color-success);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+.server-manage-button {
+  min-width: 82px;
 }
 
-.status-indicator.stopped .dot {
-  background: var(--color-danger);
+.server-delete-button {
+  width: 32px;
+  min-height: 32px;
+  padding: 7px !important;
+  color: var(--color-danger) !important;
+  background: var(--color-danger-bg) !important;
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent) !important;
 }
 
-.status-indicator.starting .dot,
-.status-indicator.stopping .dot {
-  background: var(--color-warning);
-  animation: pulse 1s infinite alternate;
-}
-
-@keyframes pulse {
-  from {
-    opacity: 0.5;
-  }
-  to {
-    opacity: 1;
-  }
+.server-delete-button:hover,
+.server-delete-button:focus-visible {
+  color: #ffffff !important;
+  background: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
 }
 </style>

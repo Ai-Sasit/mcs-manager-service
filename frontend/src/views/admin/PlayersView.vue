@@ -25,7 +25,7 @@
     </div>
 
     <div v-else-if="players.length === 0" class="empty-state">
-      <div class="empty-icon">👤</div>
+      <div class="empty-icon"><PhUser :size="48" /></div>
       <h3>No Active Players</h3>
       <p>No players are currently online across your fleet.</p>
     </div>
@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { PhPlus, PhArrowsClockwise, PhSpinner } from "@phosphor-icons/vue";
+import { PhPlus, PhArrowsClockwise, PhSpinner, PhUser } from "@phosphor-icons/vue";
 import { ElMessage } from "element-plus";
 import apiClient from "@/api/client";
 import { useServersStore } from "@/stores/servers";
@@ -168,8 +168,9 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 48px;
+  display: inline-flex;
   margin-bottom: 16px;
+  color: var(--color-primary);
 }
 
 .loading-state {

@@ -389,12 +389,12 @@ onMounted(() => {
   color: var(--color-primary);
 }
 .stat-icon.success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 .stat-icon.warning {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .stat-value {
@@ -525,12 +525,12 @@ onMounted(() => {
 }
 
 .instance-avatar.java {
-  background: #fff7ed;
-  color: #ea580c;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 .instance-avatar.bedrock {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .instance-info {
@@ -549,8 +549,8 @@ onMounted(() => {
 }
 
 .pid-badge {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--color-layer-alt);
+  color: var(--color-text-secondary);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
@@ -568,15 +568,15 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 
 .dot.running {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--color-success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-success) 65%, transparent);
 }
 .dot.starting {
-  background: #f59e0b;
+  background: var(--color-warning);
   animation: pulse 1s infinite;
 }
 
