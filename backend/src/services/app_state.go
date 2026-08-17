@@ -45,10 +45,21 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+func (w *logWriter) Flush() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	line := strings.TrimRight(string(w.buf), "\r\n")
+	w.buf = nil
+	if line != "" {
+		w.broker.Publish(line)
+	}
+}
+
 type AppState struct {
 	mu          sync.RWMutex
 	Servers     map[string]*models.ServerConfig
 	processes   map[string]*exec.Cmd
+	processDone map[string]chan struct{}
 	stdinPipes  map[string]io.WriteCloser
 	logBrokers  map[string]*utils.LogBroker
 	setupJobs   *SetupJobManager
@@ -65,13 +76,14 @@ func NewAppState() *AppState {
 	os.MkdirAll(filepath.Join(dataDir, "servers"), os.ModePerm)
 
 	state := &AppState{
-		Servers:    make(map[string]*models.ServerConfig),
-		processes:  make(map[string]*exec.Cmd),
-		stdinPipes: make(map[string]io.WriteCloser),
-		logBrokers: make(map[string]*utils.LogBroker),
-		setupJobs:  NewSetupJobManager(),
-		DataDir:    dataDir,
-		serversCol: utils.GetCollection(utils.DB, "servers"),
+		Servers:     make(map[string]*models.ServerConfig),
+		processes:   make(map[string]*exec.Cmd),
+		processDone: make(map[string]chan struct{}),
+		stdinPipes:  make(map[string]io.WriteCloser),
+		logBrokers:  make(map[string]*utils.LogBroker),
+		setupJobs:   NewSetupJobManager(),
+		DataDir:     dataDir,
+		serversCol:  utils.GetCollection(utils.DB, "servers"),
 	}
 
 	state.loadServers()
@@ -166,10 +178,15 @@ func (s *AppState) AddServer(config *models.ServerConfig) {
 func (s *AppState) RemoveServer(id string) (*models.ServerConfig, bool) {
 	s.mu.Lock()
 	srv, ok := s.Servers[id]
+	broker := s.logBrokers[id]
 	if ok {
 		delete(s.Servers, id)
+		delete(s.logBrokers, id)
 	}
 	s.mu.Unlock()
+	if broker != nil {
+		broker.Close()
+	}
 	if ok {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -253,7 +270,9 @@ func (s *AppState) StartServer(id string) error {
 	}
 
 	srv.Status = models.StatusRunning
+	done := make(chan struct{})
 	s.processes[id] = cmd
+	s.processDone[id] = done
 	if stdinErr == nil {
 		s.stdinPipes[id] = stdin
 	}
@@ -264,6 +283,7 @@ func (s *AppState) StartServer(id string) error {
 	// Watch for process exit in a goroutine
 	go func() {
 		err := cmd.Wait()
+		lw.Flush()
 		if err != nil {
 			logger.Warn(fmt.Sprintf("[StartServer] Process exited id=%s: %s", id, err.Error()), nil)
 			s.publishLog(id, "WARN", "Server process exited unexpectedly: "+err.Error())
@@ -276,6 +296,7 @@ func (s *AppState) StartServer(id string) error {
 		// Only clean up if this is still the active process for this server
 		if s.processes[id] == cmd {
 			delete(s.processes, id)
+			delete(s.processDone, id)
 			if pipe, ok := s.stdinPipes[id]; ok {
 				pipe.Close()
 				delete(s.stdinPipes, id)
@@ -285,6 +306,7 @@ func (s *AppState) StartServer(id string) error {
 			}
 		}
 		s.mu.Unlock()
+		close(done)
 		s.Save()
 	}()
 
@@ -293,13 +315,16 @@ func (s *AppState) StartServer(id string) error {
 }
 
 func (s *AppState) StopServer(id string) error {
-	s.mu.Lock()
+	s.mu.RLock()
 	cmd, hasProcess := s.processes[id]
+	done := s.processDone[id]
 	stdin, hasStdin := s.stdinPipes[id]
-	srv := s.Servers[id]
-	s.mu.Unlock()
+	s.mu.RUnlock()
 
 	if hasProcess && cmd.Process != nil {
+		if done == nil {
+			return fmt.Errorf("server process completion signal is unavailable")
+		}
 		// Try graceful shutdown first: send "stop" command
 		if hasStdin {
 			logger.Info("[StopServer] Sending graceful stop command id="+id, nil)
@@ -307,48 +332,37 @@ func (s *AppState) StopServer(id string) error {
 			fmt.Fprintln(stdin, "stop")
 		}
 
-		// Wait up to 5 seconds for graceful exit
-		done := make(chan error, 1)
-		go func() { done <- cmd.Wait() }()
 		select {
 		case <-done:
 			logger.Info("[StopServer] Process exited gracefully id="+id, nil)
-			s.publishLog(id, "INFO", "Server stopped gracefully.")
 		case <-time.After(5 * time.Second):
 			logger.Warn("[StopServer] Graceful timeout, force killing id="+id, nil)
 			s.publishLog(id, "WARN", "Graceful stop timed out — force killing process.")
-			cmd.Process.Kill()
+			if err := cmd.Process.Kill(); err != nil {
+				return fmt.Errorf("failed to kill server process: %w", err)
+			}
 			<-done
 			logger.Info("[StopServer] Process force killed id="+id, nil)
 			s.publishLog(id, "WARN", "Process force killed.")
 		}
 	} else {
 		logger.Info("[StopServer] No running process id="+id, nil)
+		s.mu.Lock()
+		if srv, ok := s.Servers[id]; ok {
+			srv.Status = models.StatusStopped
+		}
+		s.mu.Unlock()
+		s.Save()
 	}
-
-	// Clean up resources
-	s.mu.Lock()
-	if s.processes[id] == cmd {
-		delete(s.processes, id)
-	}
-	if pipe, ok := s.stdinPipes[id]; ok {
-		pipe.Close()
-		delete(s.stdinPipes, id)
-	}
-	if srv != nil {
-		srv.Status = models.StatusStopped
-	}
-	s.mu.Unlock()
-
-	s.Save()
 	return nil
 }
 
 func (s *AppState) RestartServer(id string) error {
 	logger.Info("[RestartServer] Stopping id="+id, nil)
 	s.publishLog(id, "INFO", "Restart requested — stopping server...")
-	s.StopServer(id)
-	time.Sleep(2 * time.Second)
+	if err := s.StopServer(id); err != nil {
+		return err
+	}
 	logger.Info("[RestartServer] Restarting id="+id, nil)
 	s.publishLog(id, "INFO", "Restarting server now...")
 	return s.StartServer(id)
@@ -356,20 +370,28 @@ func (s *AppState) RestartServer(id string) error {
 
 func (s *AppState) StopAllServers() {
 	logger.Info("[StopAllServers] Stopping all running servers", nil)
-	s.mu.Lock()
+	type runningProcess struct {
+		id   string
+		cmd  *exec.Cmd
+		done <-chan struct{}
+	}
+	s.mu.RLock()
+	running := make([]runningProcess, 0, len(s.processes))
 	for id, cmd := range s.processes {
+		running = append(running, runningProcess{id: id, cmd: cmd, done: s.processDone[id]})
+	}
+	s.mu.RUnlock()
+
+	for _, process := range running {
+		cmd := process.cmd
 		if cmd.Process != nil {
-			cmd.Process.Kill()
-			cmd.Wait()
-			logger.Info("[StopAllServers] Killed id="+id, nil)
-		}
-		if srv, ok := s.Servers[id]; ok {
-			srv.Status = models.StatusStopped
+			_ = cmd.Process.Kill()
+			if process.done != nil {
+				<-process.done
+			}
+			logger.Info("[StopAllServers] Killed id="+process.id, nil)
 		}
 	}
-	s.processes = make(map[string]*exec.Cmd)
-	s.stdinPipes = make(map[string]io.WriteCloser)
-	s.mu.Unlock()
 	s.Save()
 	logger.Info("[StopAllServers] Done", nil)
 }
@@ -414,33 +436,35 @@ func (s *AppState) SendCommand(id string, cmd string) error {
 }
 
 func (s *AppState) KillServer(id string) error {
-	s.mu.Lock()
+	s.mu.RLock()
 	cmd, hasProcess := s.processes[id]
-	srv := s.Servers[id]
-	s.mu.Unlock()
+	done := s.processDone[id]
+	s.mu.RUnlock()
 
 	if hasProcess && cmd.Process != nil {
+		if done == nil {
+			return fmt.Errorf("server process completion signal is unavailable")
+		}
 		logger.Warn("[KillServer] Force killing process id="+id, nil)
 		s.publishLog(id, "WARN", "Force killing server process...")
-		cmd.Process.Kill()
+		if err := cmd.Process.Kill(); err != nil {
+			return fmt.Errorf("failed to kill server process: %w", err)
+		}
+		if done != nil {
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				return fmt.Errorf("timed out waiting for killed server process")
+			}
+		}
 	} else {
 		logger.Info("[KillServer] No running process id="+id, nil)
+		s.mu.Lock()
+		if srv, ok := s.Servers[id]; ok {
+			srv.Status = models.StatusStopped
+		}
+		s.mu.Unlock()
+		s.Save()
 	}
-
-	// Clean up resources
-	s.mu.Lock()
-	if current, ok := s.processes[id]; ok && current == cmd {
-		delete(s.processes, id)
-	}
-	if pipe, ok := s.stdinPipes[id]; ok {
-		pipe.Close()
-		delete(s.stdinPipes, id)
-	}
-	if srv != nil {
-		srv.Status = models.StatusStopped
-	}
-	s.mu.Unlock()
-
-	s.Save()
 	return nil
 }

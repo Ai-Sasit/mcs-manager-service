@@ -10,14 +10,7 @@ import (
 
 	ws "github.com/fasthttp/websocket"
 	"github.com/gofiber/fiber/v3"
-	"github.com/valyala/fasthttp"
 )
-
-var upgrader = ws.FastHTTPUpgrader{
-	CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
-		return true
-	},
-}
 
 type terminalCommandMessage struct {
 	Type string `json:"type"`
@@ -30,23 +23,70 @@ type resourceSnapshotMessage struct {
 	Data services.ResourceSnapshot `json:"data"`
 }
 
+func parseLogCursor(c fiber.Ctx) (string, uint64) {
+	streamID := strings.Clone(c.Query("stream_id"))
+	lastEventID, _ := strconv.ParseUint(c.Query("last_event_id"), 10, 64)
+	return streamID, lastEventID
+}
+
+func streamLogBroker(client *wsClient, broker *utils.LogBroker, messageType, streamID string, lastEventID uint64) {
+	replay, subscription := broker.SubscribeAfter(streamID, lastEventID)
+	defer subscription.Cancel()
+
+	if replay.Reset && !client.sendStreamControl("stream_reset", replay, "The log stream restarted; replaying retained output.") {
+		return
+	}
+	if replay.Gap && !client.sendStreamControl("stream_gap", replay, "Some log events are no longer retained; replaying the available range.") {
+		return
+	}
+	for _, event := range replay.Events {
+		select {
+		case <-subscription.Done:
+			if subscription.Reason() == utils.LogSubscriptionSlowConsumer {
+				client.closeWithCode(ws.CloseTryAgainLater, "Log subscriber fell behind during replay")
+			} else {
+				client.close()
+			}
+			return
+		default:
+		}
+		if !client.sendLogEvent(messageType, event) {
+			return
+		}
+	}
+
+	for {
+		select {
+		case event := <-subscription.Events:
+			if !client.sendLogEvent(messageType, event) {
+				return
+			}
+		case <-subscription.Done:
+			if subscription.Reason() == utils.LogSubscriptionSlowConsumer {
+				client.closeWithCode(ws.CloseTryAgainLater, "Log subscriber fell behind")
+			} else {
+				client.close()
+			}
+			return
+		case <-client.done:
+			return
+		}
+	}
+}
+
 // WsLogs streams server stdout/stderr to a WebSocket client
 func WsLogs(c fiber.Ctx) error {
-	id := c.Params("id")
-	if err := ensureWebSocketUpgrade(c); err != nil {
-		return err
-	}
-	logger.Info("[WsLogs] Client connected server="+id, nil)
-
-	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+	id := strings.Clone(c.Params("id"))
+	streamID, lastEventID := parseLogCursor(c)
+	err := upgradeAuthorizedWebSocket(c, func(conn *ws.Conn) {
 		defer conn.Close()
 		client := newWSClient(conn)
+		logger.Info("[WsLogs] Client connected server="+id, nil)
 
 		broker := state.GetLogBroker(id)
-		ch := broker.Subscribe()
 		defer func() {
 			client.close()
-			broker.Unsubscribe(ch)
+			client.wait()
 			logger.Info("[WsLogs] Client disconnected server="+id, nil)
 		}()
 
@@ -59,20 +99,7 @@ func WsLogs(c fiber.Ctx) error {
 			}
 		}()
 
-		for {
-			select {
-			case line, ok := <-ch:
-				if !ok {
-					client.close()
-					return
-				}
-				if !client.sendEnvelope("log", line) {
-					return
-				}
-			case <-client.done:
-				return
-			}
-		}
+		streamLogBroker(client, broker, "log", streamID, lastEventID)
 	})
 
 	if err != nil {
@@ -85,40 +112,21 @@ func WsLogs(c fiber.Ctx) error {
 
 // WsTerminal provides bidirectional terminal: logs streamed out, commands sent in
 func WsTerminal(c fiber.Ctx) error {
-	id := c.Params("id")
-	if err := ensureWebSocketUpgrade(c); err != nil {
-		return err
-	}
-	logger.Info("[WsTerminal] Client connected server="+id, nil)
-
-	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+	id := strings.Clone(c.Params("id"))
+	streamID, lastEventID := parseLogCursor(c)
+	err := upgradeAuthorizedWebSocket(c, func(conn *ws.Conn) {
 		defer conn.Close()
 		client := newWSClient(conn)
+		logger.Info("[WsTerminal] Client connected server="+id, nil)
 
 		broker := state.GetLogBroker(id)
-		ch := broker.Subscribe()
 		defer func() {
 			client.close()
-			broker.Unsubscribe(ch)
+			client.wait()
 			logger.Info("[WsTerminal] Client disconnected server="+id, nil)
 		}()
 
-		go func() {
-			for {
-				select {
-				case line, ok := <-ch:
-					if !ok {
-						client.close()
-						return
-					}
-					if !client.sendEnvelope("terminal_output", line) {
-						return
-					}
-				case <-client.done:
-					return
-				}
-			}
-		}()
+		go streamLogBroker(client, broker, "terminal_output", streamID, lastEventID)
 
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -134,7 +142,6 @@ func WsTerminal(c fiber.Ctx) error {
 		}
 
 		client.close()
-		client.wait()
 	})
 
 	if err != nil {
@@ -154,19 +161,15 @@ func parseTerminalCommand(msg []byte) string {
 
 // WsBackendLogs streams internal backend logs to a WebSocket client
 func WsBackendLogs(c fiber.Ctx) error {
-	if err := ensureWebSocketUpgrade(c); err != nil {
-		return err
-	}
-	logger.Info("[WsBackendLogs] Client connected", nil)
-
-	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+	streamID, lastEventID := parseLogCursor(c)
+	err := upgradeAuthorizedWebSocket(c, func(conn *ws.Conn) {
 		defer conn.Close()
 		client := newWSClient(conn)
+		logger.Info("[WsBackendLogs] Client connected", nil)
 
-		ch := utils.BackendLogBroker.Subscribe()
 		defer func() {
 			client.close()
-			utils.BackendLogBroker.Unsubscribe(ch)
+			client.wait()
 			logger.Info("[WsBackendLogs] Client disconnected", nil)
 		}()
 
@@ -179,20 +182,7 @@ func WsBackendLogs(c fiber.Ctx) error {
 			}
 		}()
 
-		for {
-			select {
-			case line, ok := <-ch:
-				if !ok {
-					client.close()
-					return
-				}
-				if !client.sendEnvelope("log", line) {
-					return
-				}
-			case <-client.done:
-				return
-			}
-		}
+		streamLogBroker(client, utils.BackendLogBroker, "log", streamID, lastEventID)
 	})
 
 	if err != nil {
@@ -203,24 +193,22 @@ func WsBackendLogs(c fiber.Ctx) error {
 }
 
 func WsServerSetup(c fiber.Ctx) error {
-	jobID := c.Params("job_id")
+	jobID := strings.Clone(c.Params("job_id"))
 	job, ok := state.SetupJobs().Get(jobID)
 	if !ok {
 		return c.Status(fiber.StatusNotFound).SendString("Setup job not found")
 	}
-	if err := ensureWebSocketUpgrade(c); err != nil {
-		return err
-	}
 
-	logger.Info("[WsServerSetup] Client connected job="+jobID, nil)
 	lastEventID, _ := strconv.ParseInt(c.Query("last_event_id"), 10, 64)
-	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+	err := upgradeAuthorizedWebSocket(c, func(conn *ws.Conn) {
 		defer conn.Close()
 		client := newWSClient(conn)
+		logger.Info("[WsServerSetup] Client connected job="+jobID, nil)
 
 		ch, unsubscribe := job.SubscribeAfter(lastEventID)
 		defer func() {
 			client.close()
+			client.wait()
 			unsubscribe()
 			logger.Info("[WsServerSetup] Client disconnected job="+jobID, nil)
 		}()
@@ -238,12 +226,9 @@ func WsServerSetup(c fiber.Ctx) error {
 			select {
 			case event, ok := <-ch:
 				if !ok {
-					// Channel closed by SetupJob after job completion.
-					// Send an application-level close frame so the client knows this is a clean completion.
-					client.sendClose(wsCloseJobComplete, "Setup complete")
-					// Give the close frame time to be written before tearing down.
-					time.Sleep(100 * time.Millisecond)
-					client.close()
+					if client.sendClose(wsCloseJobComplete, "Setup complete") {
+						client.wait()
+					}
 					return
 				}
 				if !client.send(event.JSON()) {
@@ -257,9 +242,9 @@ func WsServerSetup(c fiber.Ctx) error {
 						code = wsCloseJobFailed
 						reason = "Setup failed"
 					}
-					client.sendClose(code, reason)
-					time.Sleep(100 * time.Millisecond)
-					client.close()
+					if client.sendClose(code, reason) {
+						client.wait()
+					}
 					return
 				}
 			case <-client.done:
@@ -276,18 +261,15 @@ func WsServerSetup(c fiber.Ctx) error {
 }
 
 func WsSystemResources(c fiber.Ctx) error {
-	if err := ensureWebSocketUpgrade(c); err != nil {
-		return err
-	}
-	logger.Info("[WsSystemResources] Client connected", nil)
-
-	err := upgrader.Upgrade(c.RequestCtx(), func(conn *ws.Conn) {
+	err := upgradeAuthorizedWebSocket(c, func(conn *ws.Conn) {
 		defer conn.Close()
 		client := newWSClient(conn)
 		ticker := time.NewTicker(2 * time.Second)
+		logger.Info("[WsSystemResources] Client connected", nil)
 		defer func() {
 			ticker.Stop()
 			client.close()
+			client.wait()
 			logger.Info("[WsSystemResources] Client disconnected", nil)
 		}()
 

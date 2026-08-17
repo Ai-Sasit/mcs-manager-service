@@ -4,7 +4,6 @@ import (
 	"mc-manage-backend/src/controllers"
 	middleware "mc-manage-backend/src/middlewares"
 	"mc-manage-backend/src/services"
-	"mc-manage-backend/src/utils"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -20,19 +19,8 @@ func RegisterRoutes(app *fiber.App, state *services.AppState) {
 		return c.SendString("V.1.0.0")
 	})
 
-	// WebSocket auth middleware (checks ?token= query param)
-	app.Use("/ws", func(c fiber.Ctx) error {
-		token := c.Query("token")
-		if token == "" {
-			return c.Status(fiber.StatusUnauthorized).SendString("Missing token")
-		}
-		if _, err := utils.ValidateJWT(token); err != nil {
-			return c.Status(fiber.StatusUnauthorized).SendString("Invalid token")
-		}
-		return c.Next()
-	})
-
-	// WebSocket routes (plain Fiber v3 handlers, upgrade handled inside)
+	// WebSocket routes authenticate during upgrade so clients receive an
+	// application close code instead of an opaque failed handshake.
 	app.Get("/ws/servers/:id/logs", controllers.WsLogs)
 	app.Get("/ws/servers/:id/terminal", controllers.WsTerminal)
 	app.Get("/ws/server-setup/:job_id", controllers.WsServerSetup)

@@ -120,6 +120,14 @@
                 <el-checkbox v-model="autoScroll">Auto-scroll</el-checkbox>
               </div>
             </div>
+            <el-alert
+              v-if="streamNotice"
+              :title="streamNotice"
+              type="warning"
+              show-icon
+              closable
+              @close="streamNotice = ''"
+            />
             <div class="log-box" ref="logBox">
               <div
                 v-for="(line, i) in logLines"
@@ -151,6 +159,14 @@
                 {{ terminalConnectionState }}
               </el-tag>
             </div>
+            <el-alert
+              v-if="streamNotice"
+              :title="streamNotice"
+              type="warning"
+              show-icon
+              closable
+              @close="streamNotice = ''"
+            />
             <div class="log-box" ref="termBox">
               <div
                 v-for="(line, i) in termLines"
@@ -316,7 +332,6 @@ import {
   PhMinus,
 } from "@phosphor-icons/vue";
 import apiClient from "@/api/client";
-import { useServerLogs } from "@/composables/useServerLogs";
 import { useServerTerminal } from "@/composables/useServerTerminal";
 import { useServersStore } from "@/stores/servers";
 import PluginUpload from "@/components/servers/PluginUpload.vue";
@@ -337,13 +352,13 @@ const logLines = ref([]);
 const autoScroll = ref(true);
 const logBox = ref(null);
 const logConnectionState = ref("idle");
-let logsComp = null;
 
 const termLines = ref([]);
 const cmdInput = ref("");
 const termBox = ref(null);
 const terminalConnectionState = ref("idle");
 let termComp = null;
+const streamNotice = ref("");
 
 const configRows = ref([]);
 const configSearch = ref("");
@@ -428,34 +443,32 @@ function scrollToBottom(el) {
   });
 }
 
-function setupLogs() {
-  if (logsComp) logsComp.disconnect();
-  logsComp = useServerLogs(server.value.id);
-  logsComp.onStateChange((state) => {
-    logConnectionState.value = state;
-  });
-  logsComp.onLine((line) => {
-    logLines.value.push(line);
-    if (logLines.value.length > 2000) logLines.value.shift();
-    if (autoScroll.value) scrollToBottom(logBox.value);
-  });
-  logsComp.connect();
-  logConnectionState.value = logsComp.state.value;
-}
-
-function setupTerminal() {
+function setupConsole() {
   if (termComp) termComp.disconnect();
   termComp = useServerTerminal(server.value.id);
   termComp.onStateChange((state) => {
     terminalConnectionState.value = state;
+    logConnectionState.value = state;
   });
   termComp.onLine((line) => {
     termLines.value.push(line);
     if (termLines.value.length > 2000) termLines.value.shift();
     scrollToBottom(termBox.value);
+    logLines.value.push(line);
+    if (logLines.value.length > 2000) logLines.value.shift();
+    if (autoScroll.value) scrollToBottom(logBox.value);
+  });
+  termComp.onControl((message) => {
+    if (message.type === "stream_reset") {
+      termLines.value = [];
+      logLines.value = [];
+    }
+    streamNotice.value =
+      message.data || "Some log output could not be recovered.";
   });
   termComp.connect();
   terminalConnectionState.value = termComp.state.value;
+  logConnectionState.value = termComp.state.value;
 }
 
 function clearLogs() {
@@ -494,8 +507,6 @@ async function stop() {
   try {
     await store.stopServer(server.value.id);
     syncStatusFromStore();
-    logsComp?.disconnect();
-    termComp?.disconnect();
     ElMessage.info("Server stopped.");
   } catch (e) {
     ElMessage.error("Failed: " + getApiErrorMessage(e));
@@ -507,12 +518,8 @@ async function stop() {
 async function restart() {
   loading.value = true;
   try {
-    logsComp?.disconnect();
-    termComp?.disconnect();
     await store.restartServer(server.value.id);
     syncStatusFromStore();
-    setupLogs();
-    setupTerminal();
     ElMessage.success("Server restarted.");
   } catch (e) {
     ElMessage.error("Failed: " + getApiErrorMessage(e));
@@ -537,8 +544,6 @@ async function kill() {
       `/servers/${encodeURIComponent(server.value.id)}/kill`,
     );
     server.value.status = "stopped";
-    logsComp?.disconnect();
-    termComp?.disconnect();
     ElMessage.success("Process terminated.");
   } catch (e) {
     if (e !== "cancel") ElMessage.error("Failed: " + getApiErrorMessage(e));
@@ -592,20 +597,6 @@ watch(activeTab, (tab) => {
   if (tab === "config") loadConfig();
 });
 
-watch(
-  () => server.value?.status,
-  (newStatus, oldStatus) => {
-    if (!server.value) return;
-    if (newStatus === "running" && oldStatus !== "running") {
-      setupLogs();
-      setupTerminal();
-    } else if (newStatus === "stopped" && oldStatus === "running") {
-      logsComp?.disconnect();
-      termComp?.disconnect();
-    }
-  },
-);
-
 function statusTagType(status) {
   if (status === "running") return "success";
   if (status === "starting" || status === "stopping") return "warning";
@@ -634,14 +625,10 @@ onMounted(async () => {
   await loadServer();
   if (server.value) {
     loadPlugins();
-    if (server.value.status === "running") {
-      setupLogs();
-      setupTerminal();
-    }
+    setupConsole();
   }
 });
 onUnmounted(() => {
-  logsComp?.disconnect();
   termComp?.disconnect();
 });
 </script>

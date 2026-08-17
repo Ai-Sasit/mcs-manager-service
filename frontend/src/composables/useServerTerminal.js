@@ -1,38 +1,26 @@
 import { WS_BASE_URL } from "@/constants";
 import { getToken } from "@/utils/authStorage";
-import { useReliableWebSocket } from "./useReliableWebSocket";
-
-function parseTerminalMessage(raw) {
-  try {
-    const message = JSON.parse(raw);
-    if (message.type === "terminal_output") return message.data || "";
-    if (message.type === "log") return message.data || "";
-  } catch {
-    return raw;
-  }
-  return raw;
-}
+import { useResumableLogStream } from "./useResumableLogStream";
 
 export function useServerTerminal(serverId) {
-  const socket = useReliableWebSocket(
+  const socket = useResumableLogStream(
     () =>
       `${WS_BASE_URL}/ws/servers/${encodeURIComponent(serverId)}/terminal?token=${encodeURIComponent(getToken() || "")}`,
-    { parseMessage: parseTerminalMessage },
+    ["terminal_output", "log"],
   );
 
   function sendCommand(cmd) {
     return socket.send({ type: "command", data: cmd });
   }
 
-  function onLine(cb) {
-    return socket.onMessage(cb);
-  }
-
   return {
     connect: socket.connect,
     disconnect: socket.disconnect,
+    resetReplay: socket.resetReplay,
     sendCommand,
-    onLine,
+    onLine: socket.onLine,
+    onControl: socket.onControl,
+    onError: socket.onError,
     state: socket.state,
     isOpen: socket.isOpen,
     error: socket.error,

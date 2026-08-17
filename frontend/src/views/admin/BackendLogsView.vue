@@ -6,7 +6,7 @@
         <p class="page-subtitle">Monitor application-level logs.</p>
       </div>
       <div class="header-actions">
-        <el-button @click="fetchLogs" :loading="loading">
+        <el-button @click="refreshLogs" :loading="loading">
           <template #icon><PhArrowsClockwise /></template>Refresh</el-button
         >
         <el-button @click="clearView">
@@ -17,20 +17,33 @@
 
     <div class="card" style="padding: 24px">
       <div class="toolbar">
-        <el-input
-          v-model="filter"
-          placeholder="Filter lines..."
-          size="small"
-          clearable
-          style="width: 300px"
-        />
-        <el-select v-model="logLevel" size="small" style="width: 140px">
-          <el-option label="All" value="" />
-          <el-option label="INFO" value="info" />
-          <el-option label="WARN" value="warn" />
-          <el-option label="ERROR" value="error" />
-        </el-select>
+        <div class="filter-tools">
+          <el-input
+            v-model="filter"
+            placeholder="Filter lines..."
+            size="small"
+            clearable
+            style="width: 300px"
+          />
+          <el-select v-model="logLevel" size="small" style="width: 140px">
+            <el-option label="All" value="" />
+            <el-option label="INFO" value="info" />
+            <el-option label="WARN" value="warn" />
+            <el-option label="ERROR" value="error" />
+          </el-select>
+        </div>
+        <el-tag size="small" :type="connectionTagType">
+          {{ connectionLabel }}
+        </el-tag>
       </div>
+      <el-alert
+        v-if="streamNotice"
+        :title="streamNotice"
+        type="warning"
+        show-icon
+        closable
+        @close="streamNotice = ''"
+      />
       <div class="log-box" ref="logBox">
         <div
           v-for="(line, i) in filteredLines"
@@ -48,24 +61,41 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { PhArrowsClockwise, PhTrash } from "@phosphor-icons/vue";
-import apiClient from "@/api/client";
-import { getApiErrorMessage } from "@/utils/apiError";
-import { ElMessage } from "element-plus";
+import { useBackendLogs } from "@/composables/useBackendLogs";
 
 const lines = ref([]);
 const filter = ref("");
 const logLevel = ref("");
 const loading = ref(false);
 const logBox = ref(null);
+const connectionState = ref("idle");
+const streamNotice = ref("");
 let socket = null;
+
+const connectionLabel = computed(() => {
+  if (connectionState.value === "open") return "LIVE";
+  return connectionState.value.toUpperCase();
+});
+
+const connectionTagType = computed(() => {
+  if (connectionState.value === "open") return "success";
+  if (
+    connectionState.value === "error" ||
+    connectionState.value === "auth-error"
+  ) {
+    return "danger";
+  }
+  return "warning";
+});
 
 const filteredLines = computed(() => {
   let result = lines.value;
   if (logLevel.value) {
     const level = logLevel.value.toUpperCase();
-    result = result.filter((l) => l.includes(`[${level}]`));
+    const pattern = new RegExp(`\\b${level}\\b`, "i");
+    result = result.filter((line) => pattern.test(line));
   }
   if (filter.value) {
     const q = filter.value.toLowerCase();
@@ -75,8 +105,8 @@ const filteredLines = computed(() => {
 });
 
 function logLineClass(line) {
-  if (/\[ERROR\]/i.test(line)) return "log-error";
-  if (/\[WARN\]/i.test(line)) return "log-warn";
+  if (/\bERROR\b|\bFATAL\b/i.test(line)) return "log-error";
+  if (/\bWARN\b|\bWARNING\b/i.test(line)) return "log-warn";
   return "";
 }
 
@@ -87,40 +117,38 @@ function scrollToBottom() {
 }
 
 function connectSocket() {
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  const url = `${protocol}://${location.host}/ws/backend-logs`;
-  socket = new WebSocket(url);
-
-  socket.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if (msg.line) {
-        lines.value.push(msg.line);
-        if (lines.value.length > 1000) lines.value.shift();
-        scrollToBottom();
-      }
-    } catch {
-      lines.value.push(event.data);
-      if (lines.value.length > 1000) lines.value.shift();
-      scrollToBottom();
-    }
-  };
-
-  socket.onclose = () => {
-    setTimeout(() => connectSocket(), 3000);
-  };
+  socket = useBackendLogs();
+  socket.onStateChange((state) => {
+    connectionState.value = state;
+    loading.value = state === "connecting" || state === "reconnecting";
+  });
+  socket.onLine((line) => {
+    lines.value.push(line);
+    if (lines.value.length > 10000) lines.value.shift();
+    scrollToBottom();
+  });
+  socket.onControl((message) => {
+    if (message.type === "stream_reset") lines.value = [];
+    streamNotice.value =
+      message.data || "Some backend log entries could not be recovered.";
+  });
+  socket.onError((message) => {
+    if (connectionState.value === "error") streamNotice.value = message;
+  });
+  socket.connect();
+  connectionState.value = socket.state.value;
 }
 
-async function fetchLogs() {
+function refreshLogs() {
+  streamNotice.value = "";
+  lines.value = [];
   loading.value = true;
-  try {
-    const { data } = await apiClient.get("/system/logs");
-    lines.value = data.data || [];
-    scrollToBottom();
-  } catch (e) {
-    ElMessage.error("Failed to fetch logs: " + getApiErrorMessage(e));
-  } finally {
-    loading.value = false;
+  socket?.resetReplay();
+  if (socket) {
+    connectionState.value = socket.state.value;
+    loading.value =
+      socket.state.value === "connecting" ||
+      socket.state.value === "reconnecting";
   }
 }
 
@@ -129,12 +157,11 @@ function clearView() {
 }
 
 onMounted(() => {
-  fetchLogs();
   connectSocket();
 });
 
 onUnmounted(() => {
-  if (socket) socket.close();
+  socket?.disconnect();
 });
 </script>
 
@@ -165,8 +192,19 @@ onUnmounted(() => {
 
 .toolbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.filter-tools {
+  display: flex;
+  gap: 12px;
+}
+
+.el-alert {
+  margin-bottom: 12px;
 }
 
 .log-box {

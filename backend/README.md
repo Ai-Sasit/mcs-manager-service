@@ -168,6 +168,14 @@ air
 - `GET /ws/server-setup/:job_id` - Stream server setup progress (requires token query param)
 - `GET /ws/backend-logs` - Stream backend application logs (requires token query param)
 
+Log and terminal streams support resumable delivery with optional `stream_id`
+and `last_event_id` query parameters. Each output envelope contains `type`,
+`data`, `ts`, `stream_id`, and `event_id`. A client reconnects using the last
+processed cursor; `stream_gap` reports an expired 10,000-event replay window,
+and `stream_reset` reports a new backend stream. Slow consumers are closed with
+code `1013` so they can resume, while invalid or revoked sessions close with
+code `4401` and must not reconnect without signing in again.
+
 Production reverse proxies must forward websocket upgrade traffic for `/ws` to this backend service. For nginx, configure `proxy_http_version 1.1`, `proxy_set_header Upgrade $http_upgrade`, and `proxy_set_header Connection "upgrade"` on the `/ws/` location. A `502` from the browser usually means nginx cannot reach the backend upstream or the `/ws` location is missing upgrade routing.
 
 ### Plugin Management

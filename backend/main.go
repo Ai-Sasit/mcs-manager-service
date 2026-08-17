@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
@@ -28,6 +29,9 @@ func (v *structValidator) Validate(out any) error {
 
 func main() {
 	_ = godotenv.Load()
+	if err := utils.HydrateBackendLogBroker("logs", time.Now()); err != nil {
+		fmt.Printf("Warning: failed to preload backend logs: %s\n", err.Error())
+	}
 	logger.Init("mc-manage")
 	db := utils.ConnectDB()
 	defer utils.DisconnectDB(db)
